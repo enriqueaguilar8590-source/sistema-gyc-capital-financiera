@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#eef3ef">
+    <meta name="theme-color" content="#1c2420">
     <script>(function(){try{var t=localStorage.getItem("gyc_theme");if(!t){t=(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -18,22 +18,22 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary: #1a7f4b;
-            --primary-dark: #0b4a2e;
-            --primary-soft: #e3efe7;
-            --gold: #d9a441;
-            --bg-body: #eef3ef;
+            --primary: #2d6a3e;
+            --primary-dark: #1c2420;
+            --primary-soft: #e6efe4;
+            --gold: #c9a54a;
+            --bg-body: #f1f3ef;
             --bg-card: #ffffff;
             --bg-input: #f3f7f4;
-            --text-main: #10261a;
+            --text-main: #1c2420;
             --text-muted: #6b7f72;
             --border: #dfe8e2;
             --danger: #d64545;
-            --warning: #d9a441;
+            --warning: #c9a54a;
             --info: #3b82f6;
             --nav-width: 260px;
             --shadow: 0 6px 20px rgba(16, 60, 35, 0.07);
-            --hero: linear-gradient(135deg, #0b4a2e 0%, #11663c 55%, #1b8a52 100%);
+            --hero: linear-gradient(135deg, #1c2420 0%, #1f4a2c 55%, #3f7d3a 100%);
             --nav-bg: rgba(255,255,255,.97);
             --danger-soft: #fdeceb;
         }
@@ -43,11 +43,11 @@
            ========================================================= */
         :root[data-theme="dark"] {
             color-scheme: dark;
-            --primary: #34b36d;
-            --primary-dark: #3ec47a;
+            --primary: #5f9e4a;
+            --primary-dark: #7bb562;
             --primary-soft: #173325;
-            --bg-body: #0a0f0d;
-            --bg-card: #141b17;
+            --bg-body: #101512;
+            --bg-card: #1c2420;
             --bg-input: #1c2620;
             --text-main: #f1f7f3;
             --text-muted: #93a79a;
@@ -949,7 +949,16 @@
         let currentReportEl = null;
         let repMoraTipo = 'real';
 
-        function save() { localStorage.setItem('gyc_v10', JSON.stringify(db)); }
+
+        // --- Sincronización con la nube (app) ---
+        function save() { localStorage.setItem('gyc_v10', JSON.stringify(db)); try { parent.postMessage('gyc-save', '*'); } catch(e) {} }
+        window.__gycApply = function(d) {
+            db = d;
+            if(!db.trash) db.trash = []; if(!db.hist) db.hist = []; if(!db.cfg) db.cfg = {};
+            if(!db.cfg.mora) db.cfg.mora = { activa: 'si', gracia: 0 };
+            if(session) { const u = (db.users||[]).find(x => x.u === session.u); if(u) session = u; }
+            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
+        };
         function log(acc) { db.hist.unshift({ u: session.u, n: session.n, f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), a: acc }); save(); }
 
         // --- MANEJO DE FECHAS ROBUSTO (SOLO FECHAS DE CALENDARIO) ---
