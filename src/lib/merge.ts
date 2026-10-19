@@ -2,7 +2,7 @@
 // base = last version this device synced, local = this device now, remote = cloud now.
 type Obj = Record<string, unknown>;
 const key = (x: unknown) =>
-  x && typeof x === "object" && "id" in (x as Obj) ? `id:${String((x as Obj).id)}` : `j:${JSON.stringify(x)}`;
+  x && typeof x === "object" && "id" in (x as Obj) ? `id:${String((x as Obj)["id"])}` : `j:${JSON.stringify(x)}`;
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 function mergeArray(base: unknown[] = [], local: unknown[] = [], remote: unknown[] = []) {
