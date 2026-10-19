@@ -142,3 +142,21 @@
     color: var(--color-foreground);
   }
 }
+
+:root {
+  --brand-deep: oklch(0.24 0.015 155);
+  --brand-deep-foreground: oklch(0.96 0.01 150);
+  --gold: oklch(0.74 0.11 85);
+  --overlay: oklch(0.15 0.01 155 / 0.6);
+}
+@theme inline {
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-deep-foreground: var(--brand-deep-foreground);
+  --color-gold: var(--gold);
+  --color-overlay: var(--overlay);
+  --shadow-brand: 0 20px 50px -20px oklch(0.2 0.03 155 / 0.6);
+}
+@utility bg-brand-hero { background: linear-gradient(160deg, var(--brand-deep), oklch(0.33 0.07 150)); }
+@utility field { width: 100%; border-radius: 0.6rem; border: 1px solid var(--input); background: var(--background); padding: 0.55rem 0.75rem; color: var(--foreground); }
+@utility btn-brand { width: 100%; border-radius: 0.6rem; background: var(--primary); color: var(--primary-foreground); padding: 0.55rem; font-weight: 600; }
+@utility btn-ghost { width: 100%; border-radius: 0.6rem; border: 1px solid var(--input); padding: 0.55rem; font-weight: 600; color: var(--foreground); }
