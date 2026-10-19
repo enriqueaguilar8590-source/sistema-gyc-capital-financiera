@@ -1,0 +1,2437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#eef3ef">
+    <script>(function(){try{var t=localStorage.getItem("gyc_theme");if(!t){t=(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="GYC Capital">
+    <title>GYC Capital Pro - Sistema Integral</title>
+    <meta name="description" content="Sistema de gestión integral para control de clientes, créditos, cobros, recibos y planes de pago." />
+    <meta property="og:title" content="GYC Capital Pro - Sistema Integral" />
+    <meta property="og:description" content="Sistema de gestión integral para control de clientes, créditos, cobros, recibos y planes de pago." />
+    <!-- Fuentes y Gráficas -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Courier+Prime&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1a7f4b;
+            --primary-dark: #0b4a2e;
+            --primary-soft: #e3efe7;
+            --gold: #d9a441;
+            --bg-body: #eef3ef;
+            --bg-card: #ffffff;
+            --bg-input: #f3f7f4;
+            --text-main: #10261a;
+            --text-muted: #6b7f72;
+            --border: #dfe8e2;
+            --danger: #d64545;
+            --warning: #d9a441;
+            --info: #3b82f6;
+            --nav-width: 260px;
+            --shadow: 0 6px 20px rgba(16, 60, 35, 0.07);
+            --hero: linear-gradient(135deg, #0b4a2e 0%, #11663c 55%, #1b8a52 100%);
+            --nav-bg: rgba(255,255,255,.97);
+            --danger-soft: #fdeceb;
+        }
+
+        /* =========================================================
+           MODO OSCURO
+           ========================================================= */
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --primary: #34b36d;
+            --primary-dark: #3ec47a;
+            --primary-soft: #173325;
+            --bg-body: #0a0f0d;
+            --bg-card: #141b17;
+            --bg-input: #1c2620;
+            --text-main: #f1f7f3;
+            --text-muted: #93a79a;
+            --border: #29362e;
+            --danger: #f06a6a;
+            --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            --nav-bg: rgba(20,27,23,.97);
+            --danger-soft: #3a1f1f;
+        }
+        :root[data-theme="dark"] .btn-primary,
+        :root[data-theme="dark"] .tab-item.active { color: #04140b; }
+        :root[data-theme="dark"] .nav-btn i { filter: grayscale(1) brightness(1.4) opacity(.8); }
+        :root[data-theme="dark"] .nav-btn.active i { filter: none; }
+        :root[data-theme="dark"] .modal { background: rgba(0, 0, 0, 0.7); }
+        /* Recibo y estado de cuenta se mantienen en blanco (son para imprimir) */
+        #modal-rec .btn-sec, #modal-carta .btn-sec { background: #fff; border-color: #ccc; }
+        .theme-btn { width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hidden { display: none !important; }
+
+        /* =========================================================
+           PANTALLA DE BIENVENIDA (INICIO)
+           ========================================================= */
+        .welcome {
+            position: relative;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: calc(30px + env(safe-area-inset-top)) 24px calc(30px + env(safe-area-inset-bottom));
+            background: radial-gradient(ellipse at 50% 18%, #14502f 0%, #082a19 52%, #031a0f 100%);
+            overflow: hidden;
+            color: #fff;
+        }
+        .welcome-waves { position: absolute; left: 0; bottom: 0; width: 100%; height: 38%; pointer-events: none; }
+        .welcome-inner {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .logo-mark { width: 92px; height: 70px; margin-bottom: 4px; }
+        .logo-gyc {
+            font-size: 76px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            line-height: 1;
+            background: linear-gradient(180deg, #b9e3b0 0%, #4fa466 45%, #1e6b3a 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+        }
+        .logo-capital {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            color: #dbe9df;
+            font-size: 16px;
+            letter-spacing: 9px;
+            font-weight: 600;
+        }
+        .logo-capital::before, .logo-capital::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); }
+        .logo-slogan { font-family: 'Dancing Script', cursive; font-size: 34px; margin-top: 6px; color: #f4f9f5; font-style: italic; }
+        .logo-slogan, .logo-slogan * { font-family: 'Dancing Script', cursive; }
+
+        .pillars { display: flex; justify-content: space-between; width: 100%; margin: 44px 0 40px; gap: 8px; }
+        .pillar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 10px; color: #b7cabd; }
+        .pillar svg { width: 26px; height: 26px; stroke: #cfe3d4; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+        .pillar + .pillar { border-left: 1px solid rgba(255,255,255,.12); }
+
+        .welcome-btn {
+            width: 100%;
+            padding: 17px 22px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,.22);
+            background: linear-gradient(180deg, #1d6a40, #0f4a2b);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 10px 26px rgba(0,0,0,.35);
+            touch-action: manipulation;
+        }
+        .welcome-btn span.arrow { position: absolute; right: 22px; font-size: 20px; opacity: .85; }
+
+        .login-sheet {
+            width: 100%;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border-radius: 22px;
+            padding: 22px;
+            text-align: left;
+            box-shadow: 0 14px 40px rgba(0,0,0,.45);
+        }
+        .login-sheet h3 { font-size: 18px; margin-bottom: 14px; color: var(--primary-dark); }
+        .welcome-version { position: relative; z-index: 2; margin-top: 26px; font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,.4); }
+
+        /* --- LAYOUT ESTRUCTURAL RESPONSIVE --- */
+        #view-app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-body);
+            padding: calc(14px + env(safe-area-inset-top)) 16px 10px;
+            display: flex;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            align-items: center;
+        }
+        .brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; white-space: nowrap; }
+        @media (max-width: 520px) { .no-mobile { display: none !important; } }
+        .brand #header-title { font-weight: 800; font-size: 19px; letter-spacing: .2px; color: var(--primary-dark); text-transform: none; }
+        .brand svg { width: 22px; height: 22px; }
+        .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-dark); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+
+        .container {
+            padding: 8px 16px 16px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex: 1;
+            padding-bottom: calc(110px + env(safe-area-inset-bottom)); /* Espacio para nav móvil */
+        }
+
+        /* --- NAVEGACIÓN ADAPTABLE (barra flotante) --- */
+        .bottom-nav {
+            position: fixed;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            left: 12px;
+            right: 12px;
+            width: auto;
+            background: var(--nav-bg);
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            padding: 8px 6px;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(16,60,35,.18);
+        }
+
+        .nav-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            gap: 3px;
+            padding: 6px 0;
+            border-radius: 16px;
+            transition: 0.2s;
+        }
+
+        .nav-btn i { font-size: 19px; font-style: normal; filter: grayscale(1) opacity(.7); }
+        .nav-btn.active { color: var(--primary-dark); background: var(--primary-soft); }
+        .nav-btn.active i { filter: none; }
+
+        /* --- COMPONENTES UI --- */
+        .card {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            margin-bottom: 14px;
+            height: fit-content;
+            box-shadow: var(--shadow);
+        }
+
+        .btn {
+            padding: 13px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.25s;
+            font-size: 14px;
+            width: 100%;
+            touch-action: manipulation;
+        }
+        .btn:active { transform: scale(.98); }
+        .btn-primary { background: var(--primary-dark); color: #fff; }
+        .btn-sec { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-danger { background: var(--danger-soft); color: var(--danger); }
+        .btn-warning { background: var(--warning); color: #1c1400; }
+        .btn-sm { padding: 9px 13px; font-size: 11px; width: auto; border-radius: 10px; }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            font-size: 16px; /* Evita zoom en iOS al enfocar */
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); background: var(--bg-card); }
+        label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: .4px; margin-bottom: 6px; display: block; }
+
+        /* --- DASHBOARD RESPONSIVE --- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .kpi { position: relative; overflow: hidden; background: var(--bg-card); padding: 14px 14px 14px 18px; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+        .kpi::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--kpi-accent, var(--primary)); }
+        .kpi-hero::before { display: none; }
+        .kpi span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: .4px; }
+        .kpi h3 { font-size: 18px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+
+        .kpi-hero {
+            grid-column: 1 / -1;
+            position: relative;
+            overflow: hidden;
+            background: var(--hero);
+            border: none;
+            border-left: none;
+            padding: 20px 20px 22px;
+            border-radius: 22px;
+            box-shadow: 0 12px 28px rgba(11, 74, 46, .35);
+        }
+        .kpi-hero span { color: #cfe6d6; font-size: 13px; text-transform: none; font-weight: 600; letter-spacing: 0; }
+        .kpi-hero h3 { color: #fff !important; font-size: 34px; margin-top: 6px; position: relative; z-index: 2; }
+        .kpi-hero .hero-arrow { position: absolute; right: -4px; bottom: -6px; width: 150px; height: 110px; opacity: .95; z-index: 1; pointer-events: none; }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .chart-container { position: relative; height: 220px; width: 100%; margin-bottom: 10px; }
+
+        /* --- TABLAS RESPONSIVE --- */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 10px;
+            border-radius: 12px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 500px; }
+        th { text-align: left; color: var(--text-muted); padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; background: var(--bg-input); }
+        td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+        .mora-row { color: var(--danger); font-weight: bold; }
+
+        /* --- MODALES RESPONSIVE --- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(6, 32, 20, 0.6);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 10px;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            padding: 22px;
+            border-radius: 22px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 95vh;
+            overflow-y: auto;
+            border: none;
+            box-shadow: 0 20px 50px rgba(0,0,0,.35);
+            position: relative;
+        }
+
+        /* --- ADAPTACIÓN PARA COMPUTADORA (DESKTOP) --- */
+        @media (min-width: 1024px) {
+            header { padding: 15px 40px; }
+            .container { padding-bottom: 20px; padding-top: 20px; }
+
+            .kpi-grid { grid-template-columns: repeat(5, 1fr); }
+            .charts-grid { grid-template-columns: 1fr 1fr; }
+
+            .bottom-nav {
+                position: sticky;
+                top: 70px;
+                left: auto;
+                right: auto;
+                bottom: auto;
+                height: calc(100vh - 70px);
+                width: 220px;
+                flex-direction: column;
+                padding: 20px 12px;
+                border: none;
+                border-right: 1px solid var(--border);
+                border-radius: 0;
+                box-shadow: none;
+                background: var(--bg-body);
+            }
+            #view-app { flex-direction: row; flex-wrap: wrap; }
+            header { width: 100%; }
+            .container { width: calc(100% - 220px); margin: 0; }
+
+            .nav-btn {
+                flex: none;
+                flex-direction: row;
+                padding: 14px 20px;
+                width: 100%;
+                justify-content: flex-start;
+                font-size: 14px;
+                gap: 15px;
+                margin-bottom: 4px;
+            }
+            .nav-btn i { font-size: 18px; }
+
+            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        }
+
+        /* --- PRINT STYLES CORREGIDOS --- */
+        @media print {
+            html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            #view-login, #view-app, header, nav, .bottom-nav, .container, .no-print, .modal.hidden {
+                display: none !important;
+            }
+
+            .modal:not(.hidden) {
+                position: static !important;
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                z-index: auto !important;
+            }
+
+            .modal:not(.hidden) .modal-content {
+                position: static !important;
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                background: transparent !important;
+                color: #000000 !important;
+                border: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+            }
+
+            /* Imprimir Recibo Térmico */
+            #modal-rec:not(.hidden) #print-thermal,
+            #modal-rec:not(.hidden) #print-thermal * {
+                visibility: visible !important;
+            }
+
+            #modal-rec:not(.hidden) #print-thermal {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 58mm !important;
+                max-width: 58mm !important;
+                color: #000000 !important;
+                font-size: 9pt !important;
+                background: #ffffff !important;
+                font-family: 'Courier Prime', monospace !important;
+                padding: 2mm !important;
+                margin: 0 !important;
+                display: block !important;
+                line-height: 1.3 !important;
+            }
+
+            #print-thermal hr {
+                border: none !important;
+                border-top: 1px dashed #000000 !important;
+                margin: 6px 0 !important;
+            }
+
+            /* Imprimir Plan de Pago / Estado de Cuenta (Carta) */
+            #modal-carta:not(.hidden) #print-letter,
+            #modal-carta:not(.hidden) #print-letter * {
+                visibility: visible !important;
+            }
+
+            #modal-carta:not(.hidden) #print-letter {
+                position: static !important;
+                display: block !important;
+                width: 100% !important;
+                color: #000000 !important;
+                background: #ffffff !important;
+                font-size: 9pt !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            #print-letter table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+
+            #print-letter th, #print-letter td {
+                border: 1px solid #000000 !important;
+                padding: 4px 6px !important;
+                color: #000000 !important;
+            }
+
+            @page {
+                size: auto;
+                margin: 5mm;
+            }
+        }
+
+        .badge-test { background: #6366f1; color: white; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: bold; }
+        .tab-group { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .tab-group::-webkit-scrollbar { display: none; }
+        .tab-item { padding: 10px 18px; background: var(--bg-card); color: var(--text-muted); border-radius: 22px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1px solid var(--border); transition: 0.25s; }
+        .tab-item.active { background: var(--primary-dark); color: #fff; border-color: var(--primary-dark); font-weight: 700; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN / BIENVENIDA -->
+    <div id="view-login" class="welcome">
+        <svg class="welcome-waves" viewBox="0 0 400 260" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+                <linearGradient id="wv1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1c6b3f"/><stop offset="1" stop-color="#0a3420"/></linearGradient>
+                <linearGradient id="wv2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0d3f26"/><stop offset="1" stop-color="#175c37"/></linearGradient>
+            </defs>
+            <path d="M0 120 C 90 60, 170 200, 270 130 S 380 60, 400 90 L400 260 L0 260 Z" fill="url(#wv1)" opacity=".85"/>
+            <path d="M0 170 C 100 120, 190 230, 290 175 S 380 140, 400 160 L400 260 L0 260 Z" fill="url(#wv2)"/>
+            <path d="M0 150 C 100 100, 190 215, 290 158 S 380 120, 400 140" fill="none" stroke="#d9a441" stroke-width="1.6" opacity=".75"/>
+        </svg>
+
+        <div class="welcome-inner">
+            <svg class="logo-mark" viewBox="0 0 92 70" aria-hidden="true">
+                <defs><linearGradient id="gold" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#b8862b"/><stop offset="1" stop-color="#f1d37a"/></linearGradient></defs>
+                <rect x="40" y="38" width="9" height="26" rx="2" fill="#3f9a5c"/>
+                <rect x="53" y="28" width="9" height="36" rx="2" fill="#4fae6b"/>
+                <rect x="66" y="16" width="9" height="48" rx="2" fill="#6ac487"/>
+                <path d="M8 48 L34 30 L46 38 L82 8" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M68 7 L84 6 L82 22" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="logo-gyc">GYC</div>
+            <div class="logo-capital">CAPITAL</div>
+            <div class="logo-slogan">Creamos juntos</div>
+
+            <div class="pillars">
+                <div class="pillar">
+                    <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                    <span>Confianza</span>
+                </div>
+                <div class="pillar">
+                    <svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><path d="M16 14.5c2.7 0 5 1.6 5 4.5"/></svg>
+                    <span>Compromiso</span>
+                </div>
+                <div class="pillar">
+                    <svg viewBox="0 0 24 24"><path d="M5 20v-6M11 20V9M17 20V4"/><path d="M3 20h18"/></svg>
+                    <span>Tu aliado financiero</span>
+                </div>
+            </div>
+
+            <button id="btn-welcome" class="welcome-btn" onclick="showLoginForm()">Ingresar <span class="arrow">›</span></button>
+
+            <div id="login-form" class="login-sheet hidden">
+                <h3>Ingresar al sistema</h3>
+                <label>Usuario</label>
+                <input type="text" id="login-user" placeholder="Ej: admin" autocomplete="username" autocapitalize="none">
+                <label>Contraseña</label>
+                <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
+                <button class="btn btn-primary" onclick="handleLogin()" style="margin-top:4px;">INGRESAR AL SISTEMA</button>
+                <button class="btn btn-sec" onclick="hideLoginForm()" style="margin-top:8px;">VOLVER</button>
+            </div>
+        </div>
+        <div class="welcome-version">SISTEMA DE GESTIÓN PRO V10.6</div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="view-app" class="hidden">
+        <header>
+            <div class="brand">
+                <span id="header-title">SISTEMA</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L19 5M10 5h9v9" fill="none" stroke="#d9a441" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div style="text-align:right" class="no-mobile">
+                    <div id="display-user" style="font-size:12px; font-weight:bold;"></div>
+                    <div id="display-role" style="font-size:9px; color:var(--text-muted)"></div>
+                </div>
+                <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" aria-label="Cambiar modo claro/oscuro" title="Modo claro / oscuro">🌙</button>
+                <button class="btn btn-sm btn-sec" onclick="logout()">SALIR</button>
+            </div>
+        </header>
+
+        <nav class="bottom-nav">
+            <button class="nav-btn active" onclick="tab('sect-dash', this)"><i>📊</i><span>Resumen</span></button>
+            <button class="nav-btn" onclick="tab('sect-cli', this)"><i>👥</i><span>Clientes</span></button>
+            <button class="nav-btn" onclick="tab('sect-cre', this)"><i>💳</i><span>Créditos</span></button>
+            <button class="nav-btn" onclick="tab('sect-rep', this)"><i>📑</i><span>Reportes</span></button>
+            <button class="nav-btn" onclick="tab('sect-agenda', this); renderAgenda();"><i>🗓️</i><span>Agenda</span></button>
+            <button class="nav-btn" onclick="tab('sect-adj', this)"><i>⚙️</i><span>Ajustes</span></button>
+        </nav>
+
+        <div class="container">
+            <!-- BUSCADOR GLOBAL -->
+            <div class="card" style="padding: 6px 14px; border-radius: 16px;">
+                <input type="text" id="global-search" placeholder="🔍 Buscar cliente, crédito o recibo..." oninput="runGlobalSearch()" style="margin-bottom:0; border:none; background: transparent;">
+                <div id="search-results" class="hidden" style="margin-top:12px; max-height: 250px; overflow-y:auto; border-top: 1px solid var(--border); padding-top: 10px;"></div>
+            </div>
+
+            <!-- DASHBOARD -->
+            <section id="sect-dash">
+                <div class="kpi-grid">
+                    <div class="kpi kpi-hero">
+                        <span>Por cobrar · Cartera</span>
+                        <h3 id="d-pen">C$ 0</h3>
+                        <svg class="hero-arrow" viewBox="0 0 150 110" aria-hidden="true">
+                            <defs><linearGradient id="hg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8a6a22" stop-opacity=".0"/><stop offset="1" stop-color="#e6c065"/></linearGradient></defs>
+                            <path d="M0 100 C 40 90, 70 70, 100 40 S 130 20, 140 14" fill="none" stroke="url(#hg)" stroke-width="7" stroke-linecap="round"/>
+                            <path d="M112 8 L142 10 L140 40" fill="none" stroke="#e6c065" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="kpi"><span>Colocado</span><h3 id="d-col">C$ 0</h3></div>
+                    <div class="kpi"><span>Recuperado</span><h3 id="d-rec">C$ 0</h3></div>
+                    <div class="kpi"><span>Intereses</span><h3 id="d-int">C$ 0</h3></div>
+                    <div class="kpi"><span>Mora Cobrada</span><h3 id="d-mor">C$ 0</h3></div>
+                    <div class="kpi"><span>En Mora</span><h3 id="d-cre-mora" style="color:var(--danger)">0</h3></div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="card">
+                        <label>Evolución de Cobros</label>
+                        <div class="chart-container"><canvas id="chart-line"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <label>Distribución de Cartera</label>
+                        <div class="chart-container"><canvas id="chart-pie"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="card" style="border-left: 4px solid var(--danger);">
+                    <h4 style="font-size:12px; color:var(--danger); margin-bottom:12px; display: flex; align-items: center; gap: 8px;">
+                        <span>⚠️</span> PRÓXIMOS VENCIMIENTOS Y MORA
+                    </h4>
+                    <div class="table-wrapper">
+                        <table id="dash-mora-table">
+                            <thead>
+                                <tr><th>Cliente</th><th>Crédito</th><th>Vence</th><th>Días</th><th>Total</th></tr>
+                            </thead>
+                            <tbody id="dash-mora-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CLIENTES -->
+            <section id="sect-cli" class="hidden">
+                <div style="margin-bottom:15px;">
+                    <button class="btn btn-primary" onclick="openCliModal()">+ NUEVO CLIENTE</button>
+                </div>
+                <div id="list-cli" class="grid-2"></div>
+            </section>
+
+            <!-- CRÉDITOS -->
+            <section id="sect-cre" class="hidden">
+                <div class="tab-group">
+                    <div class="tab-item active" onclick="renderCre('todos', this)">TODOS</div>
+                    <div class="tab-item" onclick="renderCre('real', this)">REALES</div>
+                    <div class="tab-item" onclick="renderCre('prueba', this)">PRUEBA</div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="openCreModal()">+ CREAR CRÉDITO</button>
+                </div>
+                <div id="list-cre" class="grid-2"></div>
+            </section>
+
+            <!-- REPORTES -->
+            <section id="sect-rep" class="hidden">
+                <div class="tab-group">
+                    <div class="tab-item active" onclick="renderReport('diario', this)">DIARIO</div>
+                    <div class="tab-item" onclick="renderReport('mensual', this)">MENSUAL</div>
+                    <div class="tab-item" onclick="renderReport('mora', this)">MORA</div>
+                </div>
+                <div id="report-content" class="card"></div>
+            </section>
+
+            <!-- AGENDA DE COBROS (NUEVO) -->
+            <section id="sect-agenda" class="hidden">
+                <div class="tab-group" id="agenda-tabs">
+                    <div class="tab-item active" data-v="hoy" onclick="setAgendaView('hoy', this)">HOY</div>
+                    <div class="tab-item" data-v="semana" onclick="setAgendaView('semana', this)">ESTA SEMANA</div>
+                    <div class="tab-item" data-v="proxima" onclick="setAgendaView('proxima', this)">PRÓXIMA SEMANA</div>
+                    <div class="tab-item" data-v="mora" onclick="setAgendaView('mora', this)">MORA</div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label>Tipo de crédito</label>
+                    <select id="agenda-tipo" onchange="renderAgenda()" style="margin-bottom:0;">
+                        <option value="real">Solo créditos reales</option>
+                        <option value="todos">Reales y de prueba</option>
+                        <option value="prueba">Solo de prueba</option>
+                    </select>
+                </div>
+                <div id="agenda-content"></div>
+            </section>
+
+            <!-- AJUSTES -->
+            <section id="sect-adj" class="hidden">
+                <div class="tab-group">
+                    <div class="tab-item active" onclick="subTab('adj-emp', this)">EMPRESA</div>
+                    <div class="tab-item" onclick="subTab('adj-user', this)">USUARIOS</div>
+                    <div class="tab-item" onclick="subTab('adj-db', this)">SISTEMA</div>
+                    <div class="tab-item" onclick="subTab('adj-trash', this)">PAPELERA</div>
+                </div>
+
+                <div id="adj-emp" class="sub-sect">
+                    <div class="card">
+                        <label>Nombre Empresa</label><input type="text" id="cfg-name">
+                        <label>Teléfono</label><input type="text" id="cfg-tel">
+                        <label>Dirección</label><input type="text" id="cfg-dir">
+                        <label>Frase Recibo</label><textarea id="cfg-frase" rows="3"></textarea>
+                        <button class="btn btn-primary" onclick="saveCfg()">GUARDAR EMPRESA</button>
+                    </div>
+                </div>
+
+                <div id="adj-user" class="sub-sect hidden">
+                    <div class="card">
+                        <h4>Usuarios del Sistema</h4><br>
+                        <div id="list-users"></div>
+                        <hr style="margin:20px 0; border:0; border-top:1px solid var(--border);">
+                        <label>Nuevo Usuario</label>
+                        <input type="text" id="u-nom" placeholder="Nombre Completo">
+                        <input type="text" id="u-user" placeholder="Usuario de acceso">
+                        <input type="password" id="u-pass" placeholder="Contraseña">
+                        <select id="u-role">
+                            <option value="admin">Administrador (Acceso total)</option>
+                            <option value="gestor">Gestor (Solo cobros)</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="addUser()">AÑADIR USUARIO</button>
+                    </div>
+                </div>
+
+                <div id="adj-db" class="sub-sect hidden">
+                    <div class="card">
+                        <label>Configuración de Numeración</label>
+                        <div class="grid-2">
+                            <div><label>Pref. Cli</label><input type="text" id="seq-cli-pref"></div>
+                            <div><label>Sig. Cli</label><input type="number" id="seq-cli-next"></div>
+                            <div><label>Pref. Cre</label><input type="text" id="seq-cre-pref"></div>
+                            <div><label>Sig. Cre</label><input type="number" id="seq-cre-next"></div>
+                        </div>
+                        <button class="btn btn-sm btn-sec" onclick="saveSequences()">ACTUALIZAR SERIADO</button>
+                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid var(--border);">
+                        <label>Respaldo semanal automático (viernes)</label>
+                        <p id="backup-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px; line-height:1.5;"></p>
+                        <button class="btn btn-sec" onclick="backupNow()" style="margin-bottom:12px;">💾 RESPALDAR AHORA</button>
+                        <div id="list-backups" style="margin-bottom:5px;"></div>
+                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid var(--border);">
+                        <div class="grid-2">
+                            <button class="btn btn-primary" onclick="exportData()" style="background:#0891b2; color:white;">📤 EXPORTAR JSON</button>
+                            <div style="position: relative;">
+                                <button class="btn btn-sec">📥 IMPORTAR JSON</button>
+                                <input type="file" accept=".json" onchange="importData(event)" style="position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" style="margin-top:20px; width: 100%;" onclick="tab('sect-hist', null)">📜 VER HISTORIAL DE ACCIONES</button>
+                    </div>
+                </div>
+
+                <div id="adj-trash" class="sub-sect hidden">
+                    <div id="list-trash" class="grid-2"></div>
+                </div>
+            </section>
+
+            <section id="sect-hist" class="hidden">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>Historial de Acciones</h3>
+                        <button class="btn btn-sm btn-sec" onclick="tab('sect-adj')">VOLVER</button>
+                    </div>
+                    <div id="list-hist"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- MODALES -->
+    
+    <!-- MODAL CLIENTE -->
+    <div id="modal-cli" class="modal hidden">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px; color: var(--primary);">Ficha de Cliente</h3>
+            <input type="hidden" id="cli-edit-id">
+            <label>Nombre Completo</label><input type="text" id="cli-nom">
+            <label>Cédula / ID</label><input type="text" id="cli-ced">
+            <label>Teléfono</label><input type="text" id="cli-tel">
+            <label>Dirección Exacta</label><textarea id="cli-dir-input" rows="2"></textarea>
+            <label>Garantía Ofrecida</label><input type="text" id="cli-gar">
+            <div class="grid-2" style="margin-top: 10px;">
+                <button class="btn btn-primary" onclick="saveCli()">GUARDAR CLIENTE</button>
+                <button class="btn btn-sec" onclick="closeModal()">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CRÉDITO -->
+    <div id="modal-cre" class="modal hidden">
+        <div class="modal-content" style="max-width:750px;">
+            <h3 id="cre-modal-title" style="margin-bottom: 20px; color: var(--primary);">Nuevo Crédito</h3>
+            <input type="hidden" id="cre-edit-id">
+            <div class="grid-2">
+                <div>
+                    <label>Cliente</label><select id="cre-cli-sel" onchange="refreshRefi()"></select>
+                    <label>Fecha Desembolso</label><input type="date" id="cre-fec-des" oninput="calcPreviewCre()">
+                    <label>Tipo de Registro</label>
+                    <select id="cre-test"><option value="no">CRÉDITO REAL</option><option value="si">CRÉDITO DE PRUEBA</option></select>
+                </div>
+                <div>
+                    <label>Capital (C$)</label><input type="number" id="cre-cap" oninput="calcPreviewCre()" placeholder="0.00">
+                    <label>Interés Total (%)</label><input type="number" id="cre-int" value="20" oninput="calcPreviewCre()">
+                    <label>Cantidad de Cuotas</label><input type="number" id="cre-plz" value="10" oninput="calcPreviewCre()">
+                </div>
+            </div>
+            <div id="refi-box" class="card" style="background:var(--bg-input); border-color:var(--warning); margin:10px 0;">
+                <label>Descontar saldo pendiente de crédito anterior</label>
+                <select id="cre-refi" onchange="calcPreviewCre()">
+                    <option value="">No descontar</option>
+                </select>
+                <div id="refi-info" class="hidden" style="font-size:13px; line-height:1.7;">
+                    <div style="display:flex; justify-content:space-between;"><span>Saldo anterior a descontar:</span><b id="refi-saldo" style="color:var(--danger)">C$ 0.00</b></div>
+                    <div style="display:flex; justify-content:space-between;"><span>Monto neto a entregar:</span><b id="refi-neto" style="color:var(--primary)">C$ 0.00</b></div>
+                    <small style="color:var(--text-muted)">El crédito nuevo, sus intereses, cuotas y fechas se calculan sobre el capital completo.</small>
+                </div>
+            </div>
+
+            <label>Frecuencia de Pago</label>
+            <select id="cre-freq" onchange="calcPreviewCre()">
+                <option value="1">Diario</option>
+                <option value="7" selected>Semanal</option>
+                <option value="15">Quincenal</option>
+                <option value="30">Mensual</option>
+            </select>
+
+            <div class="card" style="background:var(--bg-input); border-color:var(--primary); margin: 10px 0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span>Cuota Estimada:</span><b id="cre-cuo" style="color:var(--primary)">C$ 0.00</b>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>Total a Pagar:</span><b id="cre-total-preview">C$ 0.00</b>
+                </div>
+            </div>
+
+            <label>Vista Previa del Plan</label>
+            <div id="cre-schedule-preview" class="table-wrapper" style="max-height:180px; background:var(--bg-input); padding:10px; border-radius:12px; margin-bottom:15px;"></div>
+
+            <div class="grid-2">
+                <button class="btn btn-primary" id="btn-cre-save" onclick="saveCre()">DESEMBOLSAR</button>
+                <button class="btn btn-sec" onclick="closeModal()">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL COBRO -->
+    <div id="modal-pay" class="modal hidden">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px; color: var(--primary);">Registrar Cobro</h3>
+            <div id="pay-info" class="card" style="font-size:13px; line-height: 1.6;"></div>
+            <div class="grid-2">
+                <div><label>Monto Entregado (Total Recibido)</label><input type="number" id="pay-mnt" step="0.01"></div>
+                <div><label>Mora Generada</label><input type="number" id="pay-mora" readonly style="background:var(--bg-input); color:var(--danger); font-weight:bold;"></div>
+            </div>
+            <div id="pay-dispensa-box" class="hidden" style="background:var(--bg-input); border:1px dashed var(--warning); border-radius:12px; padding:12px; margin-bottom:12px;">
+                <label>Dispensa de mora (C$)</label>
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <input type="number" id="pay-dispensa" step="0.01" min="0" value="0" oninput="refreshPayPreview()" style="margin-bottom:0;">
+                    <button type="button" class="btn btn-sm btn-warning" onclick="dispensarTodaMora()" style="white-space:nowrap; height:48px;">TODA</button>
+                </div>
+                <small style="display:block; margin-top:6px; color:var(--text-muted); font-size:11px;">Perdona solo los intereses moratorios. No afecta el capital ni los intereses del crédito.</small>
+            </div>
+            <input type="hidden" id="pay-atraso">
+            <label>Fecha del pago</label>
+            <input type="date" id="pay-fecha" oninput="refreshPayPreview()">
+            <small id="pay-fecha-hint" class="hidden" style="display:block; margin:-6px 0 12px; color:var(--warning); font-size:11px;">⏪ Pago con fecha anterior: la mora se calcula hasta esa fecha.</small>
+            <label>Observaciones del cobro</label><input type="text" id="pay-obs" placeholder="Ninguna">
+            <div class="grid-2" style="margin-top: 10px;">
+                <button class="btn btn-primary" onclick="confirmPay()">EFECTUAR COBRO</button>
+                <button class="btn btn-sec" onclick="closeModal()">CERRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RECIBO -->
+    <div id="modal-rec" class="modal hidden">
+        <div class="modal-content" style="max-width:400px; background:#fff; color:#000;">
+            <div id="print-thermal"></div>
+            <div class="no-print" style="margin-top:20px; display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn btn-primary" onclick="window.print()">🖨️ IMPRIMIR TICKET</button>
+                <button class="btn btn-sec" style="color: black;" onclick="closeModal()">CERRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ESTADO DE CUENTA -->
+    <div id="modal-carta" class="modal hidden">
+        <div class="modal-content" style="max-width:900px; background:white; color:black;">
+            <div id="print-letter"></div>
+            <div class="no-print" style="margin-top:25px; display:flex; gap:15px; border-top: 1px solid #ccc; padding-top: 20px;">
+                <button class="btn btn-primary" onclick="window.print()" style="flex: 2;">IMPRIMIR PLAN COMPLETO</button>
+                <button class="btn btn-sec" style="color: black; flex: 1;" onclick="closeModal()">CERRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- BASE DE DATOS E INICIALIZACIÓN ---
+        let db = JSON.parse(localStorage.getItem('gyc_v10')) || {
+            cli: [], cre: [], pag: [], users: [{u:'admin', p:'1234', r:'admin', n:'Administrador', s:'Activo'}],
+            cfg: { 
+                name: "GYC CAPITAL", tel: "8888-8888", dir: "Chinandega, Nicaragua", frase: "Compromiso y Dedicación", 
+                mora: { activa: 'si', gracia: 0 },
+                secuencias: { cliPref: "CLI", cliNext: 1, crePref: "CRE", creNext: 1, recPref: "RC", recNext: 1 }
+            },
+            hist: [], trash: []
+        };
+
+        // Arreglar posibles inconsistencias en el JSON cargado
+        if(!db.trash) db.trash = [];
+        if(!db.hist) db.hist = [];
+        if(!db.cfg) db.cfg = {};
+        if(!db.cfg.mora) db.cfg.mora = { activa: 'si', gracia: 0 };
+        if(!db.cfg.secuencias) db.cfg.secuencias = { cliPref: "CLI", cliNext: 1, crePref: "CRE", creNext: 1, recPref: "RC", recNext: 1 };
+
+        let session = null;
+        let lineChart = null;
+        let pieChart = null;
+        let activeCreId = null;
+        let currentReport = 'diario';
+        let currentReportEl = null;
+        let repMoraTipo = 'real';
+
+        function save() { localStorage.setItem('gyc_v10', JSON.stringify(db)); }
+        function log(acc) { db.hist.unshift({ u: session.u, n: session.n, f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), a: acc }); save(); }
+
+        // --- MANEJO DE FECHAS ROBUSTO (SOLO FECHAS DE CALENDARIO) ---
+        function parseDate(dateStr) {
+            if(!dateStr) {
+                return getTodayCalendar();
+            }
+            let d;
+            dateStr = String(dateStr);
+            if(dateStr.includes('-')) {
+                // Formato YYYY-MM-DD
+                d = new Date(dateStr + "T00:00:00");
+            } else {
+                // Formato DD/MM/YYYY o M/D/YYYY según la configuración regional.
+                const parts = dateStr.split('/');
+                const first = Number(parts[0]);
+                const second = Number(parts[1]);
+                const year = Number(parts[2]);
+                if(first > 12) d = new Date(year, second - 1, first);
+                else if(second > 12) d = new Date(year, first - 1, second);
+                else d = new Date(year, second - 1, first);
+            }
+            if(isNaN(d.getTime())) return getTodayCalendar();
+            d.setHours(0,0,0,0);
+            return d;
+        }
+
+        function getTodayCalendar() {
+            const now = new Date();
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        }
+
+        function toDateKey(date) {
+            const d = date instanceof Date ? new Date(date) : parseDate(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // Diferencia exacta entre fechas de calendario, sin considerar horas.
+        function getDaysDiff(actualDate, dueDate) {
+            const d1 = new Date(actualDate); d1.setHours(0,0,0,0);
+            const d2 = new Date(dueDate); d2.setHours(0,0,0,0);
+            const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+            const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+            return Math.round((utc1 - utc2) / (1000 * 60 * 60 * 24));
+        }
+
+        // --- LÓGICA CENTRALIZADA DE MORA ---
+        // La mora siempre es C$5 por día calendario de atraso.
+        function calculateMoraLogic(dias, gracia = 0) {
+            const diasAtraso = Math.max(0, Math.floor(Number(dias) || 0));
+            return diasAtraso * 5;
+        }
+
+        function isScheduleItemPaid(scheduleItem) {
+            const amount = Number(scheduleItem.amount) || 0;
+            const paid = Number(scheduleItem.paid) || 0;
+            return paid >= amount - 0.005;
+        }
+
+        function ensureScheduleItemMoraFields(scheduleItem) {
+            let changed = false;
+            if(scheduleItem.paid == null) { scheduleItem.paid = 0; changed = true; }
+            if(!scheduleItem.status) { scheduleItem.status = isScheduleItemPaid(scheduleItem) ? 'Pagado' : 'Pendiente'; changed = true; }
+            if(scheduleItem.moraPaidInCycle == null) { scheduleItem.moraPaidInCycle = 0; changed = true; }
+            if(scheduleItem.moraPaidTotal == null) { scheduleItem.moraPaidTotal = 0; changed = true; }
+            if(scheduleItem.moraCycleStartDate === undefined) { scheduleItem.moraCycleStartDate = null; changed = true; }
+            if(scheduleItem.moraLastPaymentDate === undefined) { scheduleItem.moraLastPaymentDate = null; changed = true; }
+            return changed;
+        }
+
+        /*
+         * Calcula exclusivamente la mora pendiente de una cuota.
+         * Si la mora de esa cuota fue liquidada, moraCycleStartDate inicia
+         * un nuevo ciclo independiente para ella.
+         */
+        function calculateMoraForScheduleItem(scheduleItem, today = getTodayCalendar()) {
+            ensureScheduleItemMoraFields(scheduleItem);
+            if(isScheduleItemPaid(scheduleItem)) return 0;
+
+            const dueDate = parseDate(scheduleItem.date);
+            const cycleStart = scheduleItem.moraCycleStartDate
+                ? parseDate(scheduleItem.moraCycleStartDate)
+                : dueDate;
+            const baseDate = cycleStart > dueDate ? cycleStart : dueDate;
+            const diasAtraso = Math.max(0, getDaysDiff(today, baseDate));
+            const moraGenerada = calculateMoraLogic(diasAtraso);
+            const moraPagada = Math.max(0, Number(scheduleItem.moraPaidInCycle) || 0);
+            return Math.max(0, moraGenerada - moraPagada);
+        }
+
+        function getArrearsSummary(credit, today = getTodayCalendar()) {
+            const overdueItems = [];
+            let overdueAmount = 0;
+            let moraAmount = 0;
+
+            (credit.schedule || []).forEach(scheduleItem => {
+                ensureScheduleItemMoraFields(scheduleItem);
+                if(isScheduleItemPaid(scheduleItem)) {
+                    scheduleItem.status = 'Pagado';
+                    return;
+                }
+                if(scheduleItem.status === 'Pagado') scheduleItem.status = 'Pendiente';
+
+                const dueDate = parseDate(scheduleItem.date);
+                const daysLate = getDaysDiff(today, dueDate);
+                if(daysLate > 0) {
+                    const pendingAmount = Math.max(0, (Number(scheduleItem.amount) || 0) - (Number(scheduleItem.paid) || 0));
+                    const itemMora = calculateMoraForScheduleItem(scheduleItem, today);
+                    overdueAmount += pendingAmount;
+                    moraAmount += itemMora;
+                    overdueItems.push({
+                        item: scheduleItem,
+                        daysLate,
+                        pendingAmount,
+                        moraAmount: itemMora
+                    });
+                }
+            });
+
+            const nextItem = (credit.schedule || []).find(scheduleItem => {
+                if(isScheduleItemPaid(scheduleItem)) return false;
+                return getDaysDiff(today, parseDate(scheduleItem.date)) <= 0;
+            });
+
+            return {
+                overdueCount: overdueItems.length,
+                overdueAmount,
+                moraAmount,
+                totalArrears: overdueAmount + moraAmount,
+                overdueItems,
+                nextItem
+            };
+        }
+
+        function migrateScheduleMoraFields() {
+            let changed = false;
+            db.cre.forEach(credit => {
+                if(!Array.isArray(credit.schedule)) return;
+
+                // Migración única de los campos globales antiguos a la primera
+                // cuota pendiente, sin borrar los datos legacy del crédito.
+                const hasItemMoraData = credit.schedule.some(item =>
+                    item.moraPaidInCycle != null ||
+                    item.moraCycleStartDate != null ||
+                    item.moraPaidTotal != null
+                );
+                const legacyPaid = Number(credit.moraPaidInCycle) || 0;
+                const legacyDate = credit.moraRefDate || null;
+
+                credit.schedule.forEach(item => {
+                    if(ensureScheduleItemMoraFields(item)) changed = true;
+                });
+
+                if(!hasItemMoraData && (legacyPaid > 0 || legacyDate)) {
+                    const firstPending = credit.schedule.find(item => !isScheduleItemPaid(item));
+                    if(firstPending) {
+                        if(legacyPaid > 0 && Number(firstPending.moraPaidInCycle) === 0) {
+                            firstPending.moraPaidInCycle = legacyPaid;
+                            changed = true;
+                        }
+                        if(legacyDate && !firstPending.moraCycleStartDate) {
+                            firstPending.moraCycleStartDate = legacyDate;
+                            changed = true;
+                        }
+                    }
+                }
+            });
+            if(changed) save();
+        }
+
+        // --- LOGIN ---
+        function handleLogin() {
+            const u = document.getElementById('login-user').value, p = document.getElementById('login-pass').value;
+            const user = db.users.find(x => x.u === u && x.p === p && x.s !== 'Inactivo');
+            if(user) {
+                session = user;
+                document.getElementById('view-login').classList.add('hidden');
+                document.getElementById('view-app').classList.remove('hidden');
+                document.getElementById('display-user').innerText = user.n;
+                document.getElementById('display-role').innerText = user.r.toUpperCase();
+                init();
+                log("Inicio de sesión");
+            } else alert("Credenciales incorrectas o usuario inactivo.");
+        }
+        function logout() {
+            let hizo = false;
+            try { hizo = fridayClosingBackup(); } catch(e) { console.warn('Respaldo de cierre:', e); }
+            if(hizo) setTimeout(() => location.reload(), 900);
+            else location.reload();
+        }
+
+        function applyTheme(t) {
+            document.documentElement.setAttribute('data-theme', t);
+            const btn = document.getElementById('theme-btn');
+            if(btn) btn.innerText = t === 'dark' ? '☀️' : '🌙';
+            const m = document.querySelector('meta[name="theme-color"]');
+            if(m) m.setAttribute('content', t === 'dark' ? '#0a0f0d' : '#eef3ef');
+        }
+        function toggleTheme() {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            try { localStorage.setItem('gyc_theme', next); } catch(e) {}
+            applyTheme(next);
+            if (lineChart) renderCharts();
+        }
+        applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+
+        function showLoginForm() {
+            document.getElementById('btn-welcome').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            const u = document.getElementById('login-user');
+            if(u) u.focus();
+        }
+        function hideLoginForm() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('btn-welcome').classList.remove('hidden');
+        }
+
+        function init() {
+            checkAndMigrateCredits();
+            migrateScheduleMoraFields();
+            try { makeWeeklyBackupIfNeeded(); } catch(e) { console.warn('Respaldo semanal:', e); }
+            renderDash();
+            loadCfg();
+            document.getElementById('header-title').innerText = db.cfg.name;
+        }
+
+        // --- MIGRACIÓN / CLASIFICACIÓN DE CRÉDITOS REALES ---
+        function checkAndMigrateCredits() {
+            if (!db.cfg.migratedRealV10) {
+                const realKeywords = ['lilieth', 'yessenia', 'hervin', 'juan carlos'];
+                db.cre.forEach(c => {
+                    const cli = db.cli.find(x => x.id === c.cliId);
+                    const cliNom = (cli?.nom || '').toLowerCase();
+                    const isReal = realKeywords.some(kw => cliNom.includes(kw));
+                    c.esPrueba = !isReal;
+                });
+                db.cfg.migratedRealV10 = true;
+                save();
+            }
+        }
+
+        // --- DASHBOARD Y GRÁFICAS (CALCULADO ÚNICAMENTE SOBRE CRÉDITOS REALES) ---
+        function renderDash() {
+            const now = getTodayCalendar();
+            const realCredits = db.cre.filter(c => !c.esPrueba);
+            const realCreIds = new Set(realCredits.map(c => c.id));
+            const realPagos = db.pag.filter(p => realCreIds.has(p.creId));
+
+            const col = realCredits.reduce((a, b) => a + (parseFloat(b.cap) || 0), 0);
+            const rec = realPagos.reduce((a, b) => a + (parseFloat(b.t) - parseFloat(b.m || 0)), 0);
+            const ints = realCredits.reduce((a, b) => a + (parseFloat(b.total || 0) - parseFloat(b.cap || 0)), 0);
+            const pen = realCredits.reduce((a, b) => a + (parseFloat(b.saldo) || 0), 0);
+            const mor = realPagos.reduce((a, b) => a + (parseFloat(b.m) || 0), 0);
+
+            const creEnMora = realCredits.filter(c => {
+                if (parseFloat(c.saldo) <= 0) return false;
+                const summary = getArrearsSummary(c, now);
+                return summary.overdueCount > 0;
+            });
+            
+            document.getElementById('d-cre-mora').innerText = creEnMora.length;
+            document.getElementById('d-col').innerText = `C$ ${col.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+            document.getElementById('d-rec').innerText = `C$ ${rec.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+            document.getElementById('d-int').innerText = `C$ ${ints.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+            document.getElementById('d-pen').innerText = `C$ ${pen.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+            document.getElementById('d-mor').innerText = `C$ ${mor.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+
+            let moraHtml = '';
+            realCredits.forEach(c => {
+                if (parseFloat(c.saldo) <= 0) return;
+                const summary = getArrearsSummary(c, now);
+                if (summary.overdueItems.length === 0) return;
+                const cli = db.cli.find(x => x.id === c.cliId);
+                summary.overdueItems.forEach(overdue => {
+                    moraHtml += `<tr class="mora-row"><td>${cli?.nom ? cli.nom.substring(0,15) : 'Cliente'}</td><td>${c.id} #${overdue.item.n}</td><td>${overdue.item.date}</td><td>${overdue.daysLate}</td><td>C$ ${(overdue.pendingAmount + overdue.moraAmount).toFixed(2)}</td></tr>`;
+                });
+            });
+            document.getElementById('dash-mora-list').innerHTML = moraHtml || '<tr><td colspan="5" align="center">Sin mora pendiente actualmente</td></tr>';
+
+            renderCharts(realCredits, realPagos);
+        }
+
+        function renderCharts(realCredits, realPagos) {
+            if (typeof Chart === 'undefined') return; // sin conexión: las gráficas no cargan, el resto sigue funcionando
+            const cs = getComputedStyle(document.documentElement);
+            const gridCol = cs.getPropertyValue('--border').trim() || '#e4ece7';
+            const txtCol = cs.getPropertyValue('--text-main').trim() || '#10261a';
+            Chart.defaults.color = cs.getPropertyValue('--text-muted').trim() || '#6b7f72';
+            if (!realCredits) realCredits = db.cre.filter(c => !c.esPrueba);
+            if (!realPagos) {
+                const realCreIds = new Set(realCredits.map(c => c.id));
+                realPagos = db.pag.filter(p => realCreIds.has(p.creId));
+            }
+
+            const lastPagos = realPagos.slice(-7);
+            const lineLabels = lastPagos.map(p => p.f);
+            const lineDataCobros = lastPagos.map(p => p.t);
+            const lineDataMora = lastPagos.map(p => p.m);
+
+            if (lineChart) lineChart.destroy();
+            const ctxL = document.getElementById('chart-line').getContext('2d');
+            lineChart = new Chart(ctxL, {
+                type: 'line',
+                data: {
+                    labels: lineLabels.length ? lineLabels : ['Sin cobros'],
+                    datasets: [
+                        { label: 'Recibido', data: lineDataCobros.length ? lineDataCobros : [0], borderColor: '#1a7f4b', tension: 0.35, fill: true, backgroundColor: 'rgba(26, 127, 75, 0.12)' },
+                        { label: 'Mora', data: lineDataMora.length ? lineDataMora : [0], borderColor: '#d64545', tension: 0.35 }
+                    ]
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    responsive: true,
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: gridCol } },
+                        x: { grid: { display: false } }
+                    } 
+                }
+            });
+
+            const penCap = realCredits.reduce((a, b) => a + (parseFloat(b.saldo) || 0), 0);
+            const totalRec = realPagos.reduce((a, b) => a + (parseFloat(b.t) - parseFloat(b.m || 0)), 0);
+            
+            if (pieChart) pieChart.destroy();
+            const ctxP = document.getElementById('chart-pie').getContext('2d');
+            pieChart = new Chart(ctxP, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pendiente', 'Recuperado'],
+                    datasets: [{
+                        data: [penCap, totalRec],
+                        backgroundColor: ['#d9a441', '#1a7f4b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { color: txtCol, font: { size: 11 } } } } 
+                }
+            });
+        }
+
+        // --- NAVEGACIÓN ---
+        function tab(id, el) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            if(el) el.classList.add('active');
+            if(id === 'sect-cli') renderCli();
+            if(id === 'sect-cre') renderCre();
+            if(id === 'sect-hist') renderHist();
+            if(id === 'sect-rep') renderReport(currentReport, currentReportEl || document.querySelector('#sect-rep .tab-item'));
+            if(id === 'sect-dash') renderDash();
+            window.scrollTo(0,0);
+        }
+
+        function subTab(id, el) {
+            document.querySelectorAll('.sub-sect').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('#sect-adj .tab-item').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            if(id === 'adj-trash') renderTrash();
+            if(id === 'adj-db') renderBackups();
+            if(id === 'adj-user') renderUsers();
+        }
+
+        // --- CLIENTES ---
+        function renderCli() {
+            document.getElementById('list-cli').innerHTML = db.cli.map(c => `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <b style="color:var(--primary)">${c.id} - ${c.nom}</b><br>
+                            <small>${c.ced} | 📞 ${c.tel}</small><br>
+                            <p style="font-size:10px; margin-top:5px; color:var(--text-muted)">${c.gar ? 'Garantía: '+c.gar : ''}</p>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <button class="btn btn-sm btn-sec" onclick="openCliModal('${c.id}')">EDITAR</button>
+                            <button class="btn btn-sm btn-danger" onclick="moveToTrash('cli', '${c.id}')">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('') || '<p style="text-align:center; padding:20px;">No hay clientes registrados.</p>';
+        }
+
+        function openCliModal(id = null) {
+            document.getElementById('cli-edit-id').value = id || '';
+            if(id) {
+                const c = db.cli.find(x => x.id === id);
+                document.getElementById('cli-nom').value = c.nom;
+                document.getElementById('cli-ced').value = c.ced;
+                document.getElementById('cli-tel').value = c.tel;
+                document.getElementById('cli-dir-input').value = c.dir;
+                document.getElementById('cli-gar').value = c.gar || '';
+            } else {
+                document.querySelectorAll('#modal-cli input, #modal-cli textarea').forEach(i => i.value = '');
+            }
+            showModal('modal-cli');
+        }
+
+        function saveCli() {
+            const editId = document.getElementById('cli-edit-id').value;
+            const nom = document.getElementById('cli-nom').value;
+            if(!nom) return alert("El nombre es obligatorio");
+
+            if(editId) {
+                const idx = db.cli.findIndex(x => x.id === editId);
+                db.cli[idx] = { ...db.cli[idx], nom, ced: document.getElementById('cli-ced').value, tel: document.getElementById('cli-tel').value, dir: document.getElementById('cli-dir-input').value, gar: document.getElementById('cli-gar').value };
+                log("Editó cliente: " + editId);
+            } else {
+                const newId = generateID('cli');
+                db.cli.push({ id: newId, nom, ced: document.getElementById('cli-ced').value, tel: document.getElementById('cli-tel').value, dir: document.getElementById('cli-dir-input').value, gar: document.getElementById('cli-gar').value });
+                log("Creó cliente: " + newId);
+            }
+            save(); closeModal(); renderCli();
+        }
+
+        // --- CRÉDITOS ---
+        function renderCre(filter = 'todos', el = null) {
+            if(el) {
+                document.querySelectorAll('#sect-cre .tab-item').forEach(b => b.classList.remove('active'));
+                el.classList.add('active');
+            }
+            let filtered = db.cre;
+            if(filter === 'real') filtered = db.cre.filter(c => !c.esPrueba);
+            if(filter === 'prueba') filtered = db.cre.filter(c => c.esPrueba);
+
+            document.getElementById('list-cre').innerHTML = filtered.map(c => {
+                const cli = db.cli.find(x => x.id === c.cliId);
+                const arrears = getArrearsSummary(c);
+                return `
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <b>${c.id}</b> ${c.esPrueba ? '<span class="badge-test">PRUEBA</span>' : ''}<br>
+                                <small>${cli?.nom || 'Desconocido'}</small>
+                                ${c.refiDe ? `<br><small style="color:var(--warning)">Entregado: C$ ${(c.neto||0).toFixed(2)} (descontó ${c.refiDe}: C$ ${(c.descuento||0).toFixed(2)})</small>` : ''}
+                            </div>
+                            <div style="text-align:right">
+                                <b style="color:${c.saldo > 0 ? 'var(--primary)' : 'var(--text-muted)'}">C$ ${c.saldo.toFixed(2)}</b><br>
+                                <small style="font-size:9px">${c.saldo > 0 ? 'ACTIVO' : 'PAGADO'}</small>
+                            </div>
+                        </div>
+                        ${arrears.overdueCount > 0 ? `
+                            <div style="margin-top:10px; padding:8px; border-left:3px solid var(--danger); background:rgba(239,68,68,.08); font-size:11px;">
+                                <b style="color:var(--danger)">Cuotas en atraso: ${arrears.overdueCount}</b><br>
+                                Cuotas vencidas: C$ ${arrears.overdueAmount.toFixed(2)} · Mora: C$ ${arrears.moraAmount.toFixed(2)}<br>
+                                <b>Total en atraso: C$ ${arrears.totalArrears.toFixed(2)}</b>
+                            </div>
+                        ` : ''}
+                        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; margin-top:15px;">
+                            ${c.saldo > 0 ? `<button class="btn btn-sm btn-primary" onclick="payPopup('${c.id}')">💵 COBRAR</button>` : ''}
+                            <button class="btn btn-sm btn-sec" onclick="accountStatement('${c.id}')">📄 PLAN</button>
+                            <button class="btn btn-sm btn-sec" onclick="openCreModal('${c.id}')">✏️ EDITAR</button>
+                            <button class="btn btn-sm btn-danger" onclick="moveToTrash('cre', '${c.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).reverse().join('') || '<p style="text-align:center; padding:20px; width:100%;">No hay créditos en esta categoría.</p>';
+        }
+
+        function openCreModal(id = null) {
+            const sel = document.getElementById('cre-cli-sel');
+            sel.innerHTML = db.cli.map(c => `<option value="${c.id}">${c.nom}</option>`).join('') || '<option disabled>Primero cree un cliente</option>';
+            document.getElementById('cre-edit-id').value = id || '';
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('cre-fec-des').value = today;
+
+            if(id) {
+                const c = db.cre.find(x => x.id === id);
+                document.getElementById('cre-cli-sel').value = c.cliId;
+                document.getElementById('cre-cap').value = c.cap;
+                document.getElementById('cre-int').value = c.intPct;
+                document.getElementById('cre-plz').value = c.plz || c.schedule.length;
+                document.getElementById('cre-freq').value = c.freq;
+                document.getElementById('cre-test').value = c.esPrueba ? 'si' : 'no';
+                document.getElementById('cre-fec-des').value = c.fecDes || today;
+                document.getElementById('cre-modal-title').innerText = "Editar Crédito " + id;
+                document.getElementById('btn-cre-save').innerText = "GUARDAR CAMBIOS";
+            } else {
+                document.getElementById('cre-modal-title').innerText = "Nuevo Crédito";
+                document.getElementById('btn-cre-save').innerText = "DESEMBOLSAR";
+                document.getElementById('cre-cap').value = "";
+                document.getElementById('cre-test').value = "no";
+            }
+            refreshRefi();
+            showModal('modal-cre');
+        }
+
+        // --- DESCUENTO DE SALDO ANTERIOR EN NUEVO DESEMBOLSO ---
+        function refreshRefi() {
+            const sel = document.getElementById('cre-refi');
+            const cliId = document.getElementById('cre-cli-sel').value;
+            const editing = !!document.getElementById('cre-edit-id').value;
+            document.getElementById('refi-box').classList.toggle('hidden', editing);
+            sel.innerHTML = '<option value="">No descontar</option>' + db.cre
+                .filter(c => c.cliId === cliId && parseFloat(c.saldo) > 0.005)
+                .map(c => `<option value="${c.id}">${c.id} - saldo C$ ${parseFloat(c.saldo).toFixed(2)}</option>`).join('');
+            calcPreviewCre();
+        }
+
+        function getRefiSaldo() {
+            const el = document.getElementById('cre-refi');
+            const id = el ? el.value : '';
+            if(!id) return 0;
+            const old = db.cre.find(x => x.id === id);
+            return old ? Math.max(0, parseFloat(old.saldo) || 0) : 0;
+        }
+
+        function calcPreviewCre() {
+            const cap = parseFloat(document.getElementById('cre-cap').value) || 0;
+            const intPct = parseFloat(document.getElementById('cre-int').value) || 0;
+            const plz = parseInt(document.getElementById('cre-plz').value) || 1;
+            const freq = parseInt(document.getElementById('cre-freq').value);
+            const fecDes = document.getElementById('cre-fec-des').value;
+
+            const total = cap + (cap * (intPct / 100));
+            const cuota = total / plz;
+
+            document.getElementById('cre-total-preview').innerText = `C$ ${total.toFixed(2)}`;
+            const refiSaldo = getRefiSaldo();
+            const refiInfo = document.getElementById('refi-info');
+            if(refiInfo) {
+                refiInfo.classList.toggle('hidden', !refiSaldo);
+                document.getElementById('refi-saldo').innerText = `- C$ ${refiSaldo.toFixed(2)}`;
+                document.getElementById('refi-neto').innerText = `C$ ${(cap - refiSaldo).toFixed(2)}`;
+            }
+            document.getElementById('cre-cuo').innerText = `C$ ${cuota.toFixed(2)}`;
+
+            let html = '<table style="width:100%; color:var(--text-main); min-width:auto;"><tr><th>#</th><th>Fecha</th><th>Monto</th></tr>';
+            let baseDate = parseDate(fecDes);
+            for(let i=1; i<=plz; i++) {
+                let d = new Date(baseDate);
+                if(freq === 1) d.setDate(baseDate.getDate() + i);
+                else if(freq === 7) d.setDate(baseDate.getDate() + (i * 7));
+                else if(freq === 15) d.setDate(baseDate.getDate() + (i * 15));
+                else if(freq === 30) d.setMonth(baseDate.getMonth() + i);
+                html += `<tr><td style="border:none; padding:4px;">${i}</td><td style="border:none; padding:4px;">${d.toLocaleDateString()}</td><td style="border:none; padding:4px;">C$ ${cuota.toFixed(2)}</td></tr>`;
+            }
+            html += '</table>';
+            document.getElementById('cre-schedule-preview').innerHTML = html;
+        }
+
+        function saveCre() {
+            const editId = document.getElementById('cre-edit-id').value;
+            const cliId = document.getElementById('cre-cli-sel').value;
+            const cap = parseFloat(document.getElementById('cre-cap').value);
+            const intPct = parseFloat(document.getElementById('cre-int').value);
+            const plz = parseInt(document.getElementById('cre-plz').value);
+            const freq = parseInt(document.getElementById('cre-freq').value);
+            const fecDes = document.getElementById('cre-fec-des').value;
+            const esPrueba = document.getElementById('cre-test').value === 'si';
+
+            if(!cap || !plz || isNaN(cap)) return alert("Complete los datos financieros correctamente");
+
+            const total = cap + (cap * (intPct / 100));
+            const cuota = total / plz;
+            let schedule = [];
+            let baseDate = parseDate(fecDes);
+
+            for(let i = 1; i <= plz; i++) {
+                let d = new Date(baseDate);
+                if(freq === 1) d.setDate(baseDate.getDate() + i);
+                else if(freq === 7) d.setDate(baseDate.getDate() + (i * 7));
+                else if(freq === 15) d.setDate(baseDate.getDate() + (i * 15));
+                else if(freq === 30) d.setMonth(baseDate.getMonth() + i);
+                const oldItem = editId
+                    ? db.cre.find(x => x.id === editId)?.schedule?.find(item => item.n === i)
+                    : null;
+                schedule.push({
+                    n: i,
+                    date: d.toLocaleDateString(),
+                    amount: cuota,
+                    paid: oldItem ? (Number(oldItem.paid) || 0) : 0,
+                    status: oldItem?.status || 'Pendiente',
+                    moraPaidInCycle: oldItem ? (Number(oldItem.moraPaidInCycle) || 0) : 0,
+                    moraPaidTotal: oldItem ? (Number(oldItem.moraPaidTotal) || 0) : 0,
+                    moraWaivedTotal: oldItem ? (Number(oldItem.moraWaivedTotal) || 0) : 0,
+                    moraCycleStartDate: oldItem?.moraCycleStartDate || null,
+                    moraLastPaymentDate: oldItem?.moraLastPaymentDate || null
+                });
+            }
+
+            if(editId) {
+                const idx = db.cre.findIndex(x => x.id === editId);
+                const old = db.cre[idx];
+                const pagadoPreviamente = old.total - old.saldo;
+                db.cre[idx] = { 
+                    ...old, cliId, cap, intPct, total, saldo: total - pagadoPreviamente, 
+                    freq, schedule, fecDes, plz, esPrueba 
+                };
+                log("Editó crédito: " + editId);
+            } else {
+                const refiId = document.getElementById('cre-refi').value;
+                const oldCre = refiId ? db.cre.find(x => x.id === refiId) : null;
+                const descuento = oldCre ? Math.max(0, parseFloat(oldCre.saldo) || 0) : 0;
+                if(descuento > cap) return alert("El saldo anterior es mayor que el capital del nuevo crédito.");
+                const newId = generateID('cre');
+                db.cre.push({ 
+                    id: newId, cliId, cap, intPct, total, saldo: total, cuota, freq, 
+                    schedule, date: new Date().toLocaleDateString(), fecDes, plz, esPrueba,
+                    moraRefDate: null, moraPaidInCycle: 0,
+                    refiDe: oldCre ? oldCre.id : null, descuento, neto: cap - descuento
+                });
+                if(oldCre && descuento > 0) {
+                    // Cancela el crédito anterior con el descuento (queda registrado como pago)
+                    const ratio = oldCre.total > 0 ? (oldCre.total - oldCre.cap) / oldCre.total : 0;
+                    const cliOld = db.cli.find(x => x.id === oldCre.cliId);
+                    const recId = generateID('rec');
+                    db.pag.push({
+                        id: recId, creId: oldCre.id, nom: cliOld ? cliOld.nom : 'Desconocido', cid: oldCre.cliId,
+                        pri: descuento * (1 - ratio), int: descuento * ratio, m: 0, t: descuento,
+                        sa: descuento, sq: 0, obs: `Cancelado por descuento en nuevo crédito ${newId}`,
+                        f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), g: session.n
+                    });
+                    (oldCre.schedule || []).forEach(it => {
+                        ensureScheduleItemMoraFields(it);
+                        if(!isScheduleItemPaid(it)) { it.paid = it.amount; it.status = 'Pagado'; }
+                    });
+                    oldCre.saldo = 0;
+                    oldCre.canceladoPor = newId;
+                    log(`Descontó saldo C$ ${descuento.toFixed(2)} de ${oldCre.id} en nuevo crédito ${newId}`);
+                }
+                log("Desembolsó crédito: " + newId);
+            }
+            save(); closeModal(); renderCre(); renderDash();
+        }
+
+        // --- LÓGICA DE COBROS Y MORA (CALENDARIO NORMALIZADO) ---
+        let payLastSuggested = '';
+
+        function payPopup(id) {
+            const c = db.cre.find(x => x.id === id);
+            if(!c || !(c.schedule || []).some(it => !isScheduleItemPaid(it))) return alert("Este crédito ya está cancelado");
+            activeCreId = id;
+            const todayKey = toDateKey(getTodayCalendar());
+            const f = document.getElementById('pay-fecha');
+            f.max = todayKey;
+            f.value = todayKey;
+            document.getElementById('pay-obs').value = "";
+            document.getElementById('pay-dispensa').value = '0';
+            payLastSuggested = '';
+            refreshPayPreview(true);
+            showModal('modal-pay');
+        }
+
+        // Recalcula atraso y mora según la fecha elegida para el pago
+        function refreshPayPreview(force) {
+            const c = db.cre.find(x => x.id === activeCreId);
+            if(!c) return;
+            const realToday = getTodayCalendar();
+            const fechaSel = document.getElementById('pay-fecha').value;
+            let today = fechaSel ? parseDate(fechaSel) : realToday;
+            if(today > realToday) today = realToday;
+            const esAnterior = today < realToday;
+            document.getElementById('pay-fecha-hint').classList.toggle('hidden', !esAnterior);
+
+            const summary = getArrearsSummary(c, today);
+            const next = summary.nextItem || (c.schedule || []).find(it => !isScheduleItemPaid(it));
+
+            // Dispensa de mora: solo administradores, y solo si hay mora pendiente
+            const esAdmin = !!(session && session.r === 'admin');
+            document.getElementById('pay-dispensa-box').classList.toggle('hidden', !(esAdmin && summary.moraAmount > 0.005));
+            const disEl = document.getElementById('pay-dispensa');
+            let dis = esAdmin ? Math.max(0, parseFloat(disEl.value) || 0) : 0;
+            if(dis > summary.moraAmount) { dis = summary.moraAmount; disEl.value = dis.toFixed(2); }
+            if(summary.moraAmount <= 0.005) { dis = 0; disEl.value = '0'; }
+
+            const cli = db.cli.find(x => x.id === c.cliId);
+            const nextPendingAmount = next ? Math.max(0, (Number(next.amount) || 0) - (Number(next.paid) || 0)) : 0;
+            const overdueRows = summary.overdueItems.map(overdue => `
+                <div style="display:flex; justify-content:space-between; gap:10px; border-bottom:1px solid var(--border); padding:5px 0;">
+                    <span>Cuota #${overdue.item.n} · ${overdue.item.date} · ${overdue.daysLate} día(s)</span>
+                    <b>C$ ${(overdue.pendingAmount + overdue.moraAmount).toFixed(2)}</b>
+                </div>
+            `).join('');
+
+            document.getElementById('pay-info').innerHTML = `
+                <div style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px;">
+                    <b>Cliente:</b> ${cli ? cli.nom : 'Desconocido'}<br>
+                    <b>Referencia:</b> ${c.id}
+                </div>
+                <b>CUOTAS EN ATRASO:</b> ${summary.overdueCount}<br>
+                <b>TOTAL CUOTAS VENCIDAS:</b> C$ ${summary.overdueAmount.toFixed(2)}<br>
+                <b>MORA PENDIENTE:</b> C$ ${summary.moraAmount.toFixed(2)}<br>
+                <b style="color:${summary.overdueCount > 0 ? 'var(--danger)' : 'inherit'}">TOTAL EN ATRASO: C$ ${summary.totalArrears.toFixed(2)}</b>
+                ${dis > 0 ? `<br><b style="color:var(--warning)">DISPENSA DE MORA: - C$ ${dis.toFixed(2)}</b><br><b>TOTAL A PAGAR: C$ ${(summary.totalArrears - dis).toFixed(2)}</b>` : ''}
+                ${overdueRows ? `<div style="margin-top:8px;">${overdueRows}</div>` : ''}
+                ${next ? `<div style="margin-top:10px; border-top:1px solid var(--border); padding-top:8px;"><b>PRÓXIMA CUOTA:</b> C$ ${nextPendingAmount.toFixed(2)} (${next.date})</div>` : ''}
+            `;
+
+            // Solo se reemplaza el monto si el usuario no lo ha editado a mano
+            const mntEl = document.getElementById('pay-mnt');
+            const sugerido = Math.max(0, (summary.totalArrears > 0 ? summary.totalArrears - dis : nextPendingAmount)).toFixed(2);
+            if(force || mntEl.value === payLastSuggested || mntEl.value === '') mntEl.value = sugerido;
+            payLastSuggested = sugerido;
+            document.getElementById('pay-atraso').value = summary.overdueCount;
+            document.getElementById('pay-mora').value = summary.moraAmount.toFixed(2);
+        }
+
+        function dispensarTodaMora() {
+            const m = parseFloat(document.getElementById('pay-mora').value) || 0;
+            document.getElementById('pay-dispensa').value = m.toFixed(2);
+            refreshPayPreview();
+        }
+
+        function confirmPay() {
+            const c = db.cre.find(x => x.id === activeCreId);
+            const totalRecibido = parseFloat(document.getElementById('pay-mnt').value) || 0;
+            const obs = document.getElementById('pay-obs').value;
+            const saldoAnterior = c.saldo;
+            const realToday = getTodayCalendar();
+            const fechaSel = document.getElementById('pay-fecha').value;
+            const today = fechaSel ? parseDate(fechaSel) : realToday;
+            if(today > realToday) return alert("La fecha del pago no puede ser futura.");
+            const todayKey = toDateKey(today);
+            const summary = getArrearsSummary(c, today);
+            const moraPendienteAlMomento = summary.moraAmount;
+
+            // Dispensa de mora (solo administrador): perdona únicamente intereses moratorios
+            const esAdmin = !!(session && session.r === 'admin');
+            let dispensa = esAdmin ? Math.max(0, parseFloat(document.getElementById('pay-dispensa').value) || 0) : 0;
+            dispensa = Math.min(dispensa, moraPendienteAlMomento);
+
+            if(totalRecibido < 0 || (totalRecibido <= 0 && dispensa <= 0.005)) return alert("Monto no válido");
+
+            // 1. Cobrar la mora de todas las cuotas, empezando por la más antigua.
+            let remaining = totalRecibido;
+            let waiveLeft = dispensa;
+            let moraAplicada = 0;
+            let moraDispensada = 0;
+            summary.overdueItems.forEach(overdue => {
+                const item = overdue.item;
+                const moraDelItem = calculateMoraForScheduleItem(item, today);
+                if(moraDelItem <= 0) return;
+                // Primero se aplica la dispensa (si hay) y luego lo recibido; todo sobre la MORA de esa cuota.
+                const dispensaAlItem = Math.min(waiveLeft, moraDelItem);
+                const aplicadaAlItem = Math.min(remaining, moraDelItem - dispensaAlItem);
+                if(dispensaAlItem <= 0 && aplicadaAlItem <= 0) return;
+
+                item.moraPaidInCycle = (Number(item.moraPaidInCycle) || 0) + aplicadaAlItem + dispensaAlItem;
+                item.moraPaidTotal = (Number(item.moraPaidTotal) || 0) + aplicadaAlItem;
+                item.moraWaivedTotal = (Number(item.moraWaivedTotal) || 0) + dispensaAlItem;
+                item.moraLastPaymentDate = todayKey;
+                waiveLeft -= dispensaAlItem;
+                remaining -= aplicadaAlItem;
+                moraAplicada += aplicadaAlItem;
+                moraDispensada += dispensaAlItem;
+
+                // La liquidación completa (pagada + dispensada) reinicia SOLO el ciclo de esta cuota.
+                if(aplicadaAlItem + dispensaAlItem >= moraDelItem - 0.005) {
+                    item.moraCycleStartDate = todayKey;
+                    item.moraPaidInCycle = 0;
+                }
+            });
+
+            // 2. Aplicar el saldo restante al capital, desde la cuota más antigua.
+            const montoParaCuota = remaining;
+            remaining = montoParaCuota;
+            for(let s of c.schedule) {
+                if(remaining <= 0) break;
+                ensureScheduleItemMoraFields(s);
+                if(isScheduleItemPaid(s)) {
+                    s.status = 'Pagado';
+                    continue;
+                }
+                s.status = 'Pendiente';
+                let pending = Math.max(0, (Number(s.amount) || 0) - (Number(s.paid) || 0));
+                if(remaining >= pending) {
+                    remaining -= pending;
+                    s.paid = s.amount;
+                    s.status = 'Pagado';
+                } else {
+                    s.paid += remaining;
+                    remaining = 0;
+                }
+            }
+
+            const recId = generateID('rec');
+            const ratio = (c.total - c.cap) / c.total;
+            const cli = db.cli.find(x => x.id === c.cliId);
+            
+            const p = {
+                id: recId, creId: c.id, nom: cli ? cli.nom : 'Desconocido',
+                cid: c.cliId, 
+                pri: montoParaCuota * (1-ratio), 
+                int: montoParaCuota * ratio,
+                m: moraAplicada, 
+                dis: moraDispensada,
+                t: totalRecibido, 
+                sa: saldoAnterior, 
+                sq: saldoAnterior - montoParaCuota,
+                obs, f: today.toLocaleDateString(), h: new Date().toLocaleTimeString(), fReg: new Date().toLocaleDateString(), g: session.n
+            };
+
+            c.saldo -= montoParaCuota;
+            db.pag.push(p);
+            log(`Cobro ${recId}: C$ ${p.t} (Ref: ${c.id})` + (p.f !== p.fReg ? ` · fecha de pago ${p.f}` : '') + (p.dis > 0 ? ` · DISPENSA DE MORA C$ ${p.dis.toFixed(2)}` : ''));
+            save(); closeModal(); renderCre(); renderDash(); refreshReportIfOpen(); printThermal(p);
+        }
+
+        // --- RECIBO ---
+        function printThermal(p) {
+            const c = db.cre.find(x => x.id === p.creId);
+            document.getElementById('print-thermal').innerHTML = `
+                <center>
+                    <b style="font-size:1.2em">${db.cfg.name}</b><br>
+                    ${db.cfg.dir}<br>Tel: ${db.cfg.tel}<br>
+                    <hr>
+                    <b>RECIBO DE PAGO</b><br>
+                    NO: ${p.id}<br>
+                    ${c && c.esPrueba ? '<b>[CRÉDITO DE PRUEBA]</b><br>' : ''}
+                </center>
+                <hr>
+                ${p.fReg && p.fReg !== p.f ? `FECHA DE PAGO: ${p.f}<br>REGISTRADO: ${p.fReg} ${p.h}<br>` : `FECHA: ${p.f} ${p.h}<br>`}
+                CLIENTE: ${p.nom}<br>
+                CÓDIGO: ${p.cid}<br>
+                CRÉDITO: ${p.creId}<br>
+                <hr>
+                SALDO ANTERIOR: C$ ${p.sa.toFixed(2)}<br>
+                ABONO CAPITAL: C$ ${p.pri.toFixed(2)}<br>
+                INTERÉS: C$ ${p.int.toFixed(2)}<br>
+                MORA APLICADA: C$ ${p.m.toFixed(2)}<br>
+                ${p.dis > 0 ? `MORA DISPENSADA: C$ ${p.dis.toFixed(2)}<br>` : ''}
+                <b style="font-size:1.1em">TOTAL RECIBIDO: C$ ${p.t.toFixed(2)}</b><br>
+                <hr>
+                <b>SALDO FINAL: C$ ${p.sq.toFixed(2)}</b><br>
+                <hr>
+                GESTOR: ${p.g}<br>
+                <center><i>"${db.cfg.frase}"</i></center>
+                ${p.obs ? `<br>OBS: ${p.obs}` : ''}
+            `;
+            showModal('modal-rec');
+        }
+
+        function accountStatement(id) {
+            const c = db.cre.find(x => x.id === id);
+            if(!c) return;
+            const cli = db.cli.find(x => x.id === c.cliId);
+            const pagos = db.pag.filter(p => p.creId === id);
+            const arrears = getArrearsSummary(c);
+
+            document.getElementById('print-letter').innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div><h2 style="margin:0">${db.cfg.name}</h2><small>${db.cfg.dir}</small></div>
+                    <div style="text-align:right"><h3>ESTADO DE CUENTA</h3><b>Referencia: ${c.id}</b></div>
+                </div>
+                <hr style="margin:10px 0;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; margin-bottom:20px; gap:20px; font-size:11px;">
+                    <div>
+                        <b>DATOS DEL CLIENTE</b><br>
+                        Nombre: ${cli ? cli.nom : 'Desconocido'}<br>
+                        Código: ${cli ? cli.id : ''}<br>
+                        Tel: ${cli ? cli.tel : ''}<br>
+                        Dir: ${cli ? cli.dir : ''}
+                    </div>
+                    <div>
+                        <b>DETALLES DEL CRÉDITO</b><br>
+                        Desembolso: ${c.fecDes || c.date}<br>
+                        Capital: C$ ${c.cap.toLocaleString()}<br>
+                        Interés: ${c.intPct}% (C$ ${(c.total - c.cap).toLocaleString()})<br>
+                        <b>Total a Pagar: C$ ${c.total.toLocaleString()}</b>
+                    </div>
+                </div>
+                <div style="border:1px solid ${arrears.overdueCount ? '#ef4444' : '#ccc'}; padding:10px; margin-bottom:15px; font-size:11px;">
+                    <b>ESTADO DEL ATRASO</b><br>
+                    Cuotas en atraso: ${arrears.overdueCount} · Cuotas vencidas: C$ ${arrears.overdueAmount.toFixed(2)} · Mora pendiente: C$ ${arrears.moraAmount.toFixed(2)}<br>
+                    <b>TOTAL EN ATRASO: C$ ${arrears.totalArrears.toFixed(2)}</b>
+                </div>
+                <table style="width:100%; border-collapse: collapse; font-size:10px;">
+                    <thead>
+                        <tr style="background:#eee;">
+                            <th>#</th><th>Vence</th><th>Cuota</th><th>Pagado</th><th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${c.schedule.map(s => `
+                            <tr>
+                                <td style="text-align:center">${s.n}</td>
+                                <td style="text-align:center">${s.date}</td>
+                                <td style="text-align:right">C$ ${s.amount.toFixed(2)}</td>
+                                <td style="text-align:right">C$ ${s.paid.toFixed(2)}</td>
+                                <td style="text-align:center">${s.status}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight:bold; background:#eee;">
+                            <td colspan="2" style="text-align:right">TOTALES</td>
+                            <td style="text-align:right">C$ ${c.total.toFixed(2)}</td>
+                            <td style="text-align:right">C$ ${(c.total - c.saldo).toFixed(2)}</td>
+                            <td style="text-align:center; color:red">SALDO: C$ ${c.saldo.toFixed(2)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div style="margin-top:20px;">
+                    <b>HISTORIAL DE PAGOS</b>
+                    <table style="width:100%; font-size:9px; margin-top:5px;">
+                        <thead><tr style="border-bottom:1px solid #000"><th>Fecha</th><th>Recibo</th><th>Principal</th><th>Int</th><th>Mora</th><th>Dispensa</th><th>Total</th></tr></thead>
+                        <tbody>
+                            ${pagos.map(p => `<tr><td>${p.f}</td><td>${p.id}</td><td>C$ ${p.pri.toFixed(2)}</td><td>C$ ${p.int.toFixed(2)}</td><td>C$ ${p.m.toFixed(2)}</td><td>C$ ${(p.dis || 0).toFixed(2)}</td><td>C$ ${p.t.toFixed(2)}</td></tr>`).join('')}
+                            ${pagos.length === 0 ? '<tr><td colspan="7" align="center">No se registran pagos aún</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            showModal('modal-carta');
+        }
+
+        // --- GESTIÓN DE USUARIOS ---
+        function renderUsers() {
+            document.getElementById('list-users').innerHTML = db.users.map((u, i) => `
+                <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg-input); margin-bottom:8px; border-radius:8px; align-items:center;">
+                    <div><b>${u.n}</b> (${u.u}) - <small>${u.r.toUpperCase()}</small></div>
+                    <button class="btn btn-sm ${u.s === 'Activo' ? 'btn-primary' : 'btn-danger'}" onclick="toggleUser(${i})">${u.s}</button>
+                </div>
+            `).join('') || '<p>No hay otros usuarios.</p>';
+        }
+
+        function addUser() {
+            const n = document.getElementById('u-nom').value;
+            const u = document.getElementById('u-user').value;
+            const p = document.getElementById('u-pass').value;
+            const r = document.getElementById('u-role').value;
+            if(!n || !u || !p) return alert("Complete todos los campos del usuario");
+            db.users.push({ n, u, p, r, s: 'Activo' });
+            save(); renderUsers();
+            document.querySelectorAll('#adj-user input').forEach(i => i.value = '');
+        }
+
+        function toggleUser(i) {
+            if(db.users[i].u === 'admin') return alert("No se puede desactivar al usuario administrador principal.");
+            db.users[i].s = db.users[i].s === 'Activo' ? 'Inactivo' : 'Activo';
+            save(); renderUsers();
+        }
+
+        // --- PAPELERA ---
+        function moveToTrash(type, id) {
+            if(!confirm("¿Está seguro de mover este registro a la papelera?")) return;
+            let list = type === 'cli' ? db.cli : db.cre;
+            if(type === 'cli') {
+                const tieneDeuda = db.cre.some(c => c.cliId === id && c.saldo > 0);
+                if(tieneDeuda) return alert("No se puede eliminar un cliente que tiene deudas activas.");
+            }
+            const idx = list.findIndex(x => x.id === id);
+            const item = list.splice(idx, 1)[0];
+            db.trash.push({ type, data: item, date: new Date().toLocaleDateString() });
+            save();
+            log(`Movido a papelera: ${type.toUpperCase()} ${id}`);
+            if(type === 'cli') renderCli(); else renderCre();
+        }
+
+        function renderTrash() {
+            document.getElementById('list-trash').innerHTML = db.trash.map((t, i) => `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <b>${t.type === 'cli' ? t.data.nom : t.data.id}</b><br>
+                            <small>${t.type.toUpperCase()} | Borrado: ${t.date}</small>
+                        </div>
+                        <button class="btn btn-sm btn-primary" onclick="restoreFromTrash(${i})">RESTAURAR</button>
+                    </div>
+                </div>
+            `).join('') || '<p style="text-align:center; width:100%;">La papelera está vacía.</p>';
+        }
+
+        function restoreFromTrash(i) {
+            const item = db.trash.splice(i, 1)[0];
+            if(item.type === 'cli') db.cli.push(item.data);
+            else db.cre.push(item.data);
+            save(); renderTrash();
+            log(`Restaurado de papelera: ${item.type.toUpperCase()}`);
+        }
+
+        // --- CONFIGURACIÓN ---
+        function loadCfg() {
+            document.getElementById('cfg-name').value = db.cfg.name;
+            document.getElementById('cfg-tel').value = db.cfg.tel;
+            document.getElementById('cfg-dir').value = db.cfg.dir;
+            document.getElementById('cfg-frase').value = db.cfg.frase;
+            document.getElementById('seq-cli-pref').value = db.cfg.secuencias.cliPref;
+            document.getElementById('seq-cli-next').value = db.cfg.secuencias.cliNext;
+            document.getElementById('seq-cre-pref').value = db.cfg.secuencias.crePref;
+            document.getElementById('seq-cre-next').value = db.cfg.secuencias.creNext;
+        }
+
+        function saveCfg() {
+            db.cfg.name = document.getElementById('cfg-name').value;
+            db.cfg.tel = document.getElementById('cfg-tel').value;
+            db.cfg.dir = document.getElementById('cfg-dir').value;
+            db.cfg.frase = document.getElementById('cfg-frase').value;
+            save(); alert("Configuración de empresa guardada.");
+            init();
+        }
+
+        function saveSequences() {
+            db.cfg.secuencias.cliPref = document.getElementById('seq-cli-pref').value;
+            db.cfg.secuencias.cliNext = parseInt(document.getElementById('seq-cli-next').value);
+            db.cfg.secuencias.crePref = document.getElementById('seq-cre-pref').value;
+            db.cfg.secuencias.creNext = parseInt(document.getElementById('seq-cre-next').value);
+            save(); alert("Seriados actualizados correctamente.");
+        }
+
+        function generateID(type) {
+            let s = db.cfg.secuencias;
+            let id = s[type + 'Pref'] + String(s[type + 'Next']).padStart(4, '0');
+            s[type + 'Next']++;
+            save();
+            return id;
+        }
+
+        // --- BUSCADOR GLOBAL ---
+        function runGlobalSearch() {
+            const val = document.getElementById('global-search').value.toLowerCase();
+            const res = document.getElementById('search-results');
+            if(val.length < 2) { res.classList.add('hidden'); return; }
+            
+            let html = '';
+            db.cli.filter(c => c.nom.toLowerCase().includes(val) || c.id.toLowerCase().includes(val)).forEach(c => {
+                html += `<div onclick="tab('sect-cli'); openCliModal('${c.id}')" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">👥 ${c.nom} <small>(${c.id})</small></div>`;
+            });
+            db.cre.filter(c => c.id.toLowerCase().includes(val)).forEach(c => {
+                html += `<div onclick="tab('sect-cre'); accountStatement('${c.id}')" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">💳 Crédito: ${c.id}</div>`;
+            });
+            db.pag.filter(p => p.id.toLowerCase().includes(val)).forEach(p => {
+                html += `<div onclick="printThermal(db.pag.find(x=>x.id==='${p.id}'))" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">🧾 Recibo: ${p.id} <small>(${p.nom})</small></div>`;
+            });
+            res.innerHTML = html || '<p style="padding:12px; font-size:13px; color:var(--text-muted);">Sin coincidencias encontradas.</p>';
+            res.classList.remove('hidden');
+        }
+
+        // --- AGENDA DE COBROS (NUEVO: solo lectura, no modifica datos) ---
+        let agendaView = 'hoy';
+        const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+        function setAgendaView(v, el) {
+            agendaView = v;
+            document.querySelectorAll('#agenda-tabs .tab-item').forEach(b => b.classList.remove('active'));
+            if(el) el.classList.add('active');
+            renderAgenda();
+        }
+
+        function agendaCredits() {
+            const tipo = document.getElementById('agenda-tipo').value;
+            return db.cre.filter(c => {
+                if(parseFloat(c.saldo) <= 0.005) return false;
+                if(tipo === 'real') return !c.esPrueba;
+                if(tipo === 'prueba') return !!c.esPrueba;
+                return true;
+            });
+        }
+
+        function agendaFmt(n) {
+            return 'C$ ' + (Number(n) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function agendaDateLabel(d) {
+            return `${DIAS_ES[d.getDay()]} ${d.getDate()}/${String(d.getMonth()+1).padStart(2,'0')}`;
+        }
+
+        // Cuotas con vencimiento dentro de [desde, hasta] (fechas de calendario)
+        function agendaItemsBetween(desde, hasta) {
+            const out = [];
+            agendaCredits().forEach(c => {
+                const cli = db.cli.find(x => x.id === c.cliId);
+                (c.schedule || []).forEach(s => {
+                    ensureScheduleItemMoraFields(s);
+                    const due = parseDate(s.date);
+                    if(due < desde || due > hasta) return;
+                    const pagada = isScheduleItemPaid(s);
+                    const pend = Math.max(0, (Number(s.amount) || 0) - (Number(s.paid) || 0));
+                    out.push({
+                        due, c, cli, s, pagada, pend,
+                        mora: pagada ? 0 : calculateMoraForScheduleItem(s, getTodayCalendar())
+                    });
+                });
+            });
+            return out.sort((a, b) => a.due - b.due || String(a.cli?.nom).localeCompare(String(b.cli?.nom)));
+        }
+
+        function agendaRow(it, today, showDate) {
+            const atrasada = !it.pagada && it.due < today;
+            const estado = it.pagada
+                ? '<span style="color:var(--primary)">✔ Pagada</span>'
+                : atrasada
+                    ? `<span style="color:var(--danger)">⚠ Vencida (${getDaysDiff(today, it.due)} d)</span>`
+                    : (it.due.getTime() === today.getTime() ? '<span style="color:var(--warning)">Hoy</span>' : 'Pendiente');
+            return `<tr>
+                ${showDate ? `<td>${agendaDateLabel(it.due)}</td>` : ''}
+                <td><b>${it.cli?.nom || 'Desconocido'}</b>${it.cli?.tel ? `<br><small style="color:var(--text-muted)">📞 ${it.cli.tel}</small>` : ''}</td>
+                <td>${it.c.id} #${it.s.n}</td>
+                <td style="text-align:right">${agendaFmt(it.s.amount)}</td>
+                <td style="text-align:right"><b>${agendaFmt(it.pend)}</b>${it.mora > 0 ? `<br><small style="color:var(--danger)">+ mora ${agendaFmt(it.mora)}</small>` : ''}</td>
+                <td>${estado}</td>
+            </tr>`;
+        }
+
+        function agendaSummary(items) {
+            const porCobrar = items.filter(i => !i.pagada);
+            const clientes = new Set(porCobrar.map(i => i.cli?.id || i.c.cliId)).size;
+            return `<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                <div class="kpi"><span>Cobros pendientes</span><h3>${porCobrar.length}</h3></div>
+                <div class="kpi"><span>Clientes</span><h3>${clientes}</h3></div>
+                <div class="kpi"><span>Por cobrar</span><h3>${agendaFmt(porCobrar.reduce((a, i) => a + i.pend, 0))}</h3></div>
+            </div>`;
+        }
+
+        function agendaTable(items, today, showDate) {
+            if(!items.length) return '<p style="text-align:center; padding:20px; color:var(--text-muted);">Sin cobros programados.</p>';
+            return `<div class="table-wrapper"><table>
+                <thead><tr>${showDate ? '<th>Día</th>' : ''}<th>Cliente</th><th>Crédito</th><th style="text-align:right">Cuota</th><th style="text-align:right">Pendiente</th><th>Estado</th></tr></thead>
+                <tbody>${items.map(i => agendaRow(i, today, showDate)).join('')}</tbody>
+            </table></div>`;
+        }
+
+        function agendaWeek(offsetWeeks) {
+            const today = getTodayCalendar();
+            const start = new Date(today);
+            start.setDate(today.getDate() - ((today.getDay() + 6) % 7) + offsetWeeks * 7); // lunes
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6); // domingo
+            const items = agendaItemsBetween(start, end);
+            let html = `<p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Semana del ${agendaDateLabel(start)} al ${agendaDateLabel(end)}</p>`;
+            html += agendaSummary(items);
+            for(let i = 0; i < 7; i++) {
+                const d = new Date(start); d.setDate(start.getDate() + i);
+                const dayItems = items.filter(x => x.due.getTime() === d.getTime());
+                const esHoy = d.getTime() === today.getTime();
+                const total = dayItems.filter(x => !x.pagada).reduce((a, x) => a + x.pend, 0);
+                html += `<div class="card" style="${esHoy ? 'border-color:var(--primary);' : ''}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${dayItems.length ? 8 : 0}px;">
+                        <b style="color:${esHoy ? 'var(--primary)' : 'inherit'}">${agendaDateLabel(d)}${esHoy ? ' · HOY' : ''}</b>
+                        <small style="color:var(--text-muted)">${dayItems.length ? `${dayItems.length} cobro(s) · ${agendaFmt(total)}` : 'Sin cobros'}</small>
+                    </div>
+                    ${dayItems.length ? agendaTable(dayItems, today, false) : ''}
+                </div>`;
+            }
+            return html;
+        }
+
+        function agendaMora() {
+            const today = getTodayCalendar();
+            const rows = [];
+            agendaCredits().forEach(c => {
+                const cli = db.cli.find(x => x.id === c.cliId);
+                const sum = getArrearsSummary(c, today);
+                if(sum.overdueCount > 0) rows.push({ c, cli, sum });
+            });
+            rows.sort((a, b) => b.sum.totalArrears - a.sum.totalArrears);
+
+            const totalCuotas = rows.reduce((a, r) => a + r.sum.overdueAmount, 0);
+            const totalMora = rows.reduce((a, r) => a + r.sum.moraAmount, 0);
+            let html = `<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                <div class="kpi" style="--kpi-accent:var(--danger)"><span>Créditos en mora</span><h3>${rows.length}</h3></div>
+                <div class="kpi" style="--kpi-accent:var(--danger)"><span>Cuotas vencidas</span><h3>${agendaFmt(totalCuotas)}</h3></div>
+                <div class="kpi" style="--kpi-accent:var(--danger)"><span>Mora acumulada</span><h3>${agendaFmt(totalMora)}</h3></div>
+            </div>`;
+            if(!rows.length) return html + '<p style="text-align:center; padding:20px; color:var(--text-muted);">Sin mora pendiente actualmente 🎉</p>';
+
+            html += `<div class="card" style="border-left:4px solid var(--danger);"><div class="table-wrapper"><table>
+                <thead><tr><th>Cliente</th><th>Crédito</th><th>Cuotas atrasadas</th><th>Días (mayor)</th><th style="text-align:right">Cuotas</th><th style="text-align:right">Mora</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
+            rows.forEach(r => {
+                const maxDias = Math.max(...r.sum.overdueItems.map(o => o.daysLate));
+                const nums = r.sum.overdueItems.map(o => '#' + o.item.n).join(', ');
+                html += `<tr class="mora-row">
+                    <td>${r.cli?.nom || 'Desconocido'}${r.cli?.tel ? `<br><small style="font-weight:normal">📞 ${r.cli.tel}</small>` : ''}</td>
+                    <td>${r.c.id}</td>
+                    <td>${r.sum.overdueCount} (${nums})</td>
+                    <td>${maxDias}</td>
+                    <td style="text-align:right">${agendaFmt(r.sum.overdueAmount)}</td>
+                    <td style="text-align:right">${agendaFmt(r.sum.moraAmount)}</td>
+                    <td style="text-align:right">${agendaFmt(r.sum.totalArrears)}</td>
+                </tr>`;
+            });
+            html += `</tbody><tfoot><tr style="font-weight:bold;"><td colspan="4" style="text-align:right">TOTAL</td>
+                <td style="text-align:right">${agendaFmt(totalCuotas)}</td><td style="text-align:right">${agendaFmt(totalMora)}</td>
+                <td style="text-align:right">${agendaFmt(totalCuotas + totalMora)}</td></tr></tfoot></table></div></div>`;
+            return html;
+        }
+
+        function renderAgenda() {
+            const today = getTodayCalendar();
+            const box = document.getElementById('agenda-content');
+            if(!box) return;
+            if(agendaView === 'hoy') {
+                const items = agendaItemsBetween(today, today);
+                box.innerHTML = `<p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">${agendaDateLabel(today)}</p>`
+                    + agendaSummary(items) + `<div class="card">${agendaTable(items, today, false)}</div>`;
+            } else if(agendaView === 'semana') {
+                box.innerHTML = agendaWeek(0);
+            } else if(agendaView === 'proxima') {
+                box.innerHTML = agendaWeek(1);
+            } else {
+                box.innerHTML = agendaMora();
+            }
+        }
+
+        // --- UTILIDADES ---
+        function renderHist() {
+            document.getElementById('list-hist').innerHTML = db.hist.slice(0, 50).map(h => `
+                <div style="font-size:11px; padding:10px; border-bottom:1px solid var(--border); display: flex; gap: 10px;">
+                    <span style="color:var(--primary); min-width:110px;">[${h.f} ${h.h}]</span> 
+                    <span><b>${h.n}:</b> ${h.a}</span>
+                </div>
+            `).join('') || '<p>No hay acciones registradas.</p>';
+        }
+
+        function renderReport(type, el) {
+            document.querySelectorAll('#sect-rep .tab-item').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            currentReport = type;
+            currentReportEl = el;
+            if(type === 'mora') {
+                document.getElementById('report-content').innerHTML = renderMoraReport();
+                return;
+            }
+            const today = new Date().toLocaleDateString();
+            let filtered = [];
+            if(type === 'diario') filtered = db.pag.filter(p => p.f === today);
+            if(type === 'mensual') filtered = db.pag.filter(p => p.f.split('/')[1] === today.split('/')[1]);
+
+            document.getElementById('report-content').innerHTML = `
+                <h4 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Resumen de Cobros: ${type.toUpperCase()}</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Recibo</th><th>Fecha</th><th>Cliente</th><th>Monto</th></tr></thead>
+                        <tbody>${filtered.map(p => `<tr><td>${p.id}</td><td>${p.f}</td><td>${p.nom}</td><td>C$ ${p.t.toFixed(2)}</td></tr>`).join('') || '<tr><td colspan="4" align="center">Sin movimientos</td></tr>'}</tbody>
+                    </table>
+                </div>
+                <div style="margin-top:15px; text-align:right; font-size: 16px;"><b>TOTAL RECAUDADO: C$ ${filtered.reduce((a,b) => a + b.t, 0).toFixed(2)}</b></div>
+            `;
+        }
+
+        // --- REPORTE DE MORA: solo créditos ACTIVOS ---
+        function refreshReportIfOpen() {
+            const sec = document.getElementById('sect-rep');
+            if(!sec || sec.classList.contains('hidden') || !currentReportEl) return;
+            renderReport(currentReport, currentReportEl);
+        }
+
+        function repMoraCredits() {
+            return db.cre.filter(c => {
+                if(!(parseFloat(c.saldo) > 0.005)) return false; // solo créditos con saldo (activos)
+                if(repMoraTipo === 'real') return !c.esPrueba;
+                if(repMoraTipo === 'prueba') return !!c.esPrueba;
+                return true;
+            });
+        }
+
+        function renderMoraReport() {
+            const today = getTodayCalendar();
+            const activos = repMoraCredits();
+
+            // A. Créditos activos que están en mora hoy
+            const rows = [];
+            activos.forEach(c => {
+                const sum = getArrearsSummary(c, today);
+                if(sum.overdueCount > 0) rows.push({ c, cli: db.cli.find(x => x.id === c.cliId), sum });
+            });
+            rows.sort((a, b) => b.sum.totalArrears - a.sum.totalArrears);
+            const totCuotas = rows.reduce((a, r) => a + r.sum.overdueAmount, 0);
+            const totMora = rows.reduce((a, r) => a + r.sum.moraAmount, 0);
+
+            // B. Mora pagada / dispensada por créditos activos
+            const ids = new Set(activos.map(c => c.id));
+            const grupos = {};
+            db.pag.forEach(p => {
+                if(!ids.has(p.creId)) return;
+                const m = Number(p.m) || 0, d = Number(p.dis) || 0;
+                if(m <= 0 && d <= 0) return;
+                if(!grupos[p.creId]) grupos[p.creId] = { creId: p.creId, nom: p.nom, n: 0, mora: 0, dis: 0, ultimo: '' };
+                const g = grupos[p.creId];
+                g.n++; g.mora += m; g.dis += d; g.ultimo = p.f;
+            });
+            const pagados = Object.values(grupos).sort((a, b) => b.mora - a.mora);
+            const totPagada = pagados.reduce((a, g) => a + g.mora, 0);
+            const totDis = pagados.reduce((a, g) => a + g.dis, 0);
+
+            const sel = (v, t) => `<option value="${v}" ${repMoraTipo === v ? 'selected' : ''}>${t}</option>`;
+            let html = `
+                <h4 style="margin-bottom:12px;">Reporte de Mora · créditos activos</h4>
+                <label>Tipo de crédito</label>
+                <select onchange="repMoraTipo = this.value; refreshReportIfOpen();">
+                    ${sel('real', 'Solo créditos reales')}${sel('todos', 'Reales y de prueba')}${sel('prueba', 'Solo de prueba')}
+                </select>
+                <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                    <div class="kpi" style="--kpi-accent:var(--danger)"><span>En mora ahora</span><h3>${rows.length}</h3></div>
+                    <div class="kpi" style="--kpi-accent:var(--danger)"><span>Cuotas vencidas</span><h3>${agendaFmt(totCuotas)}</h3></div>
+                    <div class="kpi" style="--kpi-accent:var(--danger)"><span>Mora pendiente</span><h3>${agendaFmt(totMora)}</h3></div>
+                </div>
+                <h4 style="margin:6px 0 10px; font-size:13px; color:var(--danger);">⚠️ CRÉDITOS ACTIVOS EN MORA</h4>
+                <div class="table-wrapper"><table>
+                    <thead><tr><th>Cliente</th><th>Crédito</th><th>Cuotas atrasadas</th><th>Días (mayor)</th><th style="text-align:right">Cuotas</th><th style="text-align:right">Mora</th><th style="text-align:right">Total</th><th></th></tr></thead>
+                    <tbody>${rows.map(r => {
+                        const maxDias = Math.max(...r.sum.overdueItems.map(o => o.daysLate));
+                        const nums = r.sum.overdueItems.map(o => '#' + o.item.n).join(', ');
+                        return `<tr class="mora-row">
+                            <td>${r.cli?.nom || 'Desconocido'}${r.cli?.tel ? `<br><small style="font-weight:normal">📞 ${r.cli.tel}</small>` : ''}</td>
+                            <td>${r.c.id}</td>
+                            <td>${r.sum.overdueCount} (${nums})</td>
+                            <td>${maxDias}</td>
+                            <td style="text-align:right">${agendaFmt(r.sum.overdueAmount)}</td>
+                            <td style="text-align:right">${agendaFmt(r.sum.moraAmount)}</td>
+                            <td style="text-align:right">${agendaFmt(r.sum.totalArrears)}</td>
+                            <td><button class="btn btn-sm btn-primary" onclick="payPopup('${r.c.id}')">💵</button></td>
+                        </tr>`;
+                    }).join('') || '<tr><td colspan="8" align="center" style="padding:20px; color:var(--text-muted);">Sin créditos activos en mora 🎉</td></tr>'}</tbody>
+                </table></div>
+
+                <h4 style="margin:22px 0 10px; font-size:13px; color:var(--primary-dark);">✅ MORA PAGADA POR CRÉDITOS ACTIVOS</h4>
+                <div class="table-wrapper"><table>
+                    <thead><tr><th>Cliente</th><th>Crédito</th><th>Pagos con mora</th><th style="text-align:right">Mora pagada</th><th style="text-align:right">Mora dispensada</th><th>Último</th></tr></thead>
+                    <tbody>${pagados.map(g => `<tr>
+                        <td>${g.nom}</td><td>${g.creId}</td><td>${g.n}</td>
+                        <td style="text-align:right"><b>${agendaFmt(g.mora)}</b></td>
+                        <td style="text-align:right">${agendaFmt(g.dis)}</td>
+                        <td>${g.ultimo}</td></tr>`).join('') || '<tr><td colspan="6" align="center" style="padding:20px; color:var(--text-muted);">Ningún crédito activo ha pagado mora aún.</td></tr>'}</tbody>
+                    ${pagados.length ? `<tfoot><tr style="font-weight:bold;"><td colspan="3" style="text-align:right">TOTAL</td><td style="text-align:right">${agendaFmt(totPagada)}</td><td style="text-align:right">${agendaFmt(totDis)}</td><td></td></tr></tfoot>` : ''}
+                </table></div>
+                <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Los créditos ya cancelados no aparecen aquí.</p>`;
+            return html;
+        }
+
+        function showModal(id) { 
+            document.getElementById(id).classList.remove('hidden'); 
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal() { 
+            document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden')); 
+            document.body.style.overflow = 'auto';
+        }
+
+        // --- RESPALDO SEMANAL AUTOMÁTICO ---
+        // Cada viernes (o el primer día que se abra el sistema después de un viernes
+        // sin respaldo) se descarga un archivo JSON y se guarda una copia interna.
+        const BK_KEY = 'gyc_backups';
+        const BK_KEEP = 4;
+
+        // Último viernes ya terminado (estrictamente anterior a hoy).
+        // Si hoy es viernes, es el de hace 7 días: los pagos de hoy aún no están cerrados.
+        function lastFridayKey() {
+            const t = getTodayCalendar();
+            let back = (t.getDay() + 2) % 7; // sáb=1, dom=2 … jue=6, vie=0
+            if(back === 0) back = 7;
+            const f = new Date(t.getFullYear(), t.getMonth(), t.getDate() - back);
+            return toDateKey(f);
+        }
+
+        // Firma de los datos reales (sin el historial de acciones) para saber si cambiaron
+        function dataSig(o) {
+            return JSON.stringify({ cli: o.cli, cre: o.cre, pag: o.pag, cfg: o.cfg, users: o.users, trash: o.trash });
+        }
+
+        // Cierre del viernes: al salir el viernes se descarga el respaldo con TODOS los pagos del día
+        function fridayClosingBackup() {
+            const today = getTodayCalendar();
+            if(today.getDay() !== 5) return false;
+            if(!db.cli.length && !db.cre.length && !db.pag.length) return false;
+            const key = toDateKey(today);
+            const st = readBackupStore();
+            const prev = st.items.find(x => x.key === key);
+            if(prev && st.last === key) {
+                try { if(dataSig(JSON.parse(prev.data)) === dataSig(db)) return false; } catch(e) {}
+            }
+            makeBackup(key, true);
+            return true;
+        }
+
+        function readBackupStore() {
+            try {
+                const st = JSON.parse(localStorage.getItem(BK_KEY));
+                if(st && Array.isArray(st.items)) return st;
+            } catch(e) {}
+            return { last: null, items: [] };
+        }
+
+        function writeBackupStore(st) {
+            // Si el almacenamiento se llena, se van quitando las copias internas más viejas
+            while(true) {
+                try { localStorage.setItem(BK_KEY, JSON.stringify(st)); return true; }
+                catch(e) { if(st.items.length <= 1) return false; st.items.pop(); }
+            }
+        }
+
+        function downloadBackupFile(name, jsonStr) {
+            const blob = new Blob([jsonStr], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+        }
+
+        function makeBackup(key, auto) {
+            const json = JSON.stringify(db);
+            const st = readBackupStore();
+            st.items = st.items.filter(x => x.key !== key);
+            st.items.unshift({ key, savedAt: new Date().toISOString(), auto: !!auto, data: json });
+            st.items = st.items.slice(0, BK_KEEP);
+            if(auto) st.last = key;
+            writeBackupStore(st);
+            downloadBackupFile(`GYC_RESPALDO_SEMANAL_${key}.json`, json);
+        }
+
+        function makeWeeklyBackupIfNeeded() {
+            if(!db.cli.length && !db.cre.length && !db.pag.length) return; // nada que respaldar
+            const key = lastFridayKey();
+            const st = readBackupStore();
+            if(st.last === key) return;
+            makeBackup(key, true);
+            log(`Respaldo semanal automático (cierre del viernes ${key})`);
+        }
+
+        function backupNow() {
+            const key = toDateKey(getTodayCalendar()) + '_manual';
+            makeBackup(key, false);
+            log("Respaldo manual generado");
+            renderBackups();
+        }
+
+        function renderBackups() {
+            const st = readBackupStore();
+            const stEl = document.getElementById('backup-status');
+            const listEl = document.getElementById('list-backups');
+            if(!stEl || !listEl) return;
+            stEl.innerHTML = st.last
+                ? `Último respaldo semanal: viernes <b>${st.last}</b>. Se descarga al tocar <b>SALIR</b> el viernes (incluye los pagos del día) o, si no lo hiciste, al abrir el sistema después del viernes.<br>Guarda el archivo en tu nube (iCloud, Drive) o envíatelo por WhatsApp/correo.`
+                : 'Aún no se ha generado ningún respaldo semanal. Se descargará al salir el viernes o al abrir el sistema después del viernes.';
+            listEl.innerHTML = st.items.map((b, i) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; background:var(--bg-input); border-radius:12px; margin-bottom:8px; font-size:12px;">
+                    <div><b>${b.key.replace('_manual', ' (manual)')}</b><br><small style="color:var(--text-muted)">Guardado: ${new Date(b.savedAt).toLocaleString()}</small></div>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-sm btn-sec" onclick="downloadStoredBackup(${i})">📥</button>
+                        <button class="btn btn-sm btn-danger" onclick="restoreStoredBackup(${i})">RESTAURAR</button>
+                    </div>
+                </div>`).join('') || '';
+        }
+
+        function downloadStoredBackup(i) {
+            const b = readBackupStore().items[i];
+            if(b) downloadBackupFile(`GYC_RESPALDO_SEMANAL_${b.key}.json`, b.data);
+        }
+
+        function restoreStoredBackup(i) {
+            const b = readBackupStore().items[i];
+            if(!b) return;
+            if(!confirm(`¿Restaurar la copia ${b.key}? Se reemplazarán todos los datos actuales (antes se descargará un respaldo de lo actual).`)) return;
+            downloadBackupFile(`GYC_ANTES_DE_RESTAURAR_${new Date().getTime()}.json`, JSON.stringify(db));
+            try {
+                db = JSON.parse(b.data);
+                save();
+                location.reload();
+            } catch(e) { alert("No se pudo restaurar esta copia."); }
+        }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(db)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `GYC_RESPALDO_${new Date().getTime()}.json`;
+            a.click();
+        }
+
+        function importData(e) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    if(data.cli && confirm("¿Desea restaurar este respaldo? Se reemplazarán todos los datos actuales.")) {
+                        db = data; save(); location.reload();
+                    }
+                } catch(err) { alert("Error: El archivo seleccionado no es un respaldo válido de GYC Capital."); }
+            };
+            if(e.target.files[0]) reader.readAsText(e.target.files[0]);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if(e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
