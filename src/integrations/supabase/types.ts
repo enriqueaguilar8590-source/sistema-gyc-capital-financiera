@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      team_members: {
+        Row: {
+          added_at: string
+          email: string
+          role: string
+        }
+        Insert: {
+          added_at?: string
+          email: string
+          role?: string
+        }
+        Update: {
+          added_at?: string
+          email?: string
+          role?: string
+        }
+        Relationships: []
+      }
       user_data: {
         Row: {
           data: Json
@@ -32,12 +50,38 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace: {
+        Row: {
+          data: Json | null
+          id: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          data?: Json | null
+          id?: number
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          data?: Json | null
+          id?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_owner: { Args: never; Returns: string }
+      my_role: { Args: never; Returns: string }
+      save_workspace: {
+        Args: { expected_version: number; new_data: Json }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
