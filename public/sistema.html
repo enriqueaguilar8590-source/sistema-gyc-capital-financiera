@@ -329,6 +329,40 @@
 
         .chart-container { position: relative; height: 220px; width: 100%; margin-bottom: 10px; }
 
+        /* --- DASHBOARD: RESUMEN --- */
+        .dash-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .dash-head h2 { font-size: 18px; text-transform: capitalize; }
+        .dash-head small, .kpi-sub { color: var(--text-muted); font-size: 11px; }
+        .dash-period { margin-bottom: 0; }
+        .dash-period .tab-item { padding: 8px 14px; }
+        .kpi-sub { display: block; margin-top: 3px; }
+        .hero-sub { display: block; position: relative; z-index: 2; margin-top: 6px; color: #cfe6d6; font-size: 12px; }
+        .dash-kpis { grid-template-columns: repeat(2, 1fr); }
+        .dash-section { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin: 18px 0 10px; }
+        .dash-row-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .dash-row-head label { margin-bottom: 0; }
+        .dash-row-head small { color: var(--text-muted); font-size: 11px; }
+        .dash-progress { height: 10px; border-radius: 10px; background: var(--bg-input); overflow: hidden; margin: 4px 0 12px; }
+        .dash-progress > div { height: 100%; width: 0; border-radius: 10px; background: var(--primary); transition: width .4s; }
+        .dash-today-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }
+        .dash-today-grid span { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: .4px; }
+        .dash-today-grid b { font-size: 16px; }
+        .dash-mini-tabs { display: flex; gap: 4px; }
+        .dash-mini-tabs button { border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); border-radius: 14px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .dash-mini-tabs button.active { background: var(--primary-dark); color: #fff; border-color: var(--primary-dark); }
+        :root[data-theme="dark"] .dash-mini-tabs button.active { color: #04140b; }
+        .dash-link { border: none; background: none; color: var(--primary); font-size: 12px; font-weight: 700; cursor: pointer; }
+        .dash-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .dash-item:last-child { border-bottom: none; }
+        .dash-item small { color: var(--text-muted); display: block; font-size: 11px; }
+        .dash-item b { white-space: nowrap; }
+        .dash-bar { height: 6px; border-radius: 6px; background: var(--bg-input); margin-top: 5px; overflow: hidden; }
+        .dash-bar > div { height: 100%; background: var(--primary); border-radius: 6px; }
+        .dash-empty { text-align: center; padding: 18px 0; color: var(--text-muted); font-size: 13px; }
+        .dash-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        .dash-actions .btn { flex: 1 1 130px; }
+        @media (min-width: 1024px) { .dash-kpis { grid-template-columns: repeat(4, 1fr); } }
+
         /* --- TABLAS RESPONSIVE --- */
         .table-wrapper {
             width: 100%;
@@ -620,32 +654,93 @@
 
             <!-- DASHBOARD -->
             <section id="sect-dash">
+                <div class="dash-head">
+                    <div>
+                        <h2 id="dash-date">Resumen</h2>
+                        <small>Así va tu cartera</small>
+                    </div>
+                    <div class="tab-group dash-period" id="dash-period">
+                        <button class="tab-item active" onclick="setDashPeriod('hoy',this)">HOY</button>
+                        <button class="tab-item" onclick="setDashPeriod('semana',this)">SEMANA</button>
+                        <button class="tab-item" onclick="setDashPeriod('mes',this)">MES</button>
+                    </div>
+                </div>
+
                 <div class="kpi-grid">
                     <div class="kpi kpi-hero">
                         <span>Por cobrar · Cartera</span>
                         <h3 id="d-pen">C$ 0</h3>
+                        <small id="d-hero-sub" class="hero-sub"></small>
                         <svg class="hero-arrow" viewBox="0 0 150 110" aria-hidden="true">
                             <defs><linearGradient id="hg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#8a6a22" stop-opacity=".0"/><stop offset="1" stop-color="#e6c065"/></linearGradient></defs>
                             <path d="M0 100 C 40 90, 70 70, 100 40 S 130 20, 140 14" fill="none" stroke="url(#hg)" stroke-width="7" stroke-linecap="round"/>
                             <path d="M112 8 L142 10 L140 40" fill="none" stroke="#e6c065" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                    <div class="kpi"><span>Colocado</span><h3 id="d-col">C$ 0</h3></div>
-                    <div class="kpi"><span>Recuperado</span><h3 id="d-rec">C$ 0</h3></div>
-                    <div class="kpi"><span>Intereses</span><h3 id="d-int">C$ 0</h3></div>
-                    <div class="kpi"><span>Mora Cobrada</span><h3 id="d-mor">C$ 0</h3></div>
-                    <div class="kpi"><span>En Mora</span><h3 id="d-cre-mora" style="color:var(--danger)">0</h3></div>
+                </div>
+
+                <div class="kpi-grid dash-kpis">
+                    <div class="kpi"><span id="d-p-label">Cobrado hoy</span><h3 id="d-p-total">C$ 0</h3><small id="d-p-count" class="kpi-sub"></small></div>
+                    <div class="kpi"><span>Recuperado sin mora</span><h3 id="d-p-rec">C$ 0</h3></div>
+                    <div class="kpi" style="--kpi-accent:var(--gold)"><span>Mora cobrada</span><h3 id="d-p-mor">C$ 0</h3></div>
+                    <div class="kpi" style="--kpi-accent:var(--danger)"><span>Créditos en mora</span><h3 id="d-cre-mora" style="color:var(--danger)">0</h3><small id="d-mora-amt" class="kpi-sub"></small></div>
+                </div>
+
+                <div class="card dash-today">
+                    <div class="dash-row-head"><b>Cuotas de hoy</b><small id="dash-today-date"></small></div>
+                    <div class="dash-progress"><div id="dash-today-bar"></div></div>
+                    <div class="dash-today-grid">
+                        <div><span>Programadas</span><b id="dt-total">0</b></div>
+                        <div><span>Cobradas</span><b id="dt-paid">0</b></div>
+                        <div><span>Pendientes</span><b id="dt-pend">0</b></div>
+                        <div><span>Por cobrar hoy</span><b id="dt-amt">C$ 0</b></div>
+                    </div>
+                    <small id="dt-tomorrow" class="kpi-sub"></small>
                 </div>
 
                 <div class="charts-grid">
                     <div class="card">
-                        <label>Evolución de Cobros</label>
+                        <div class="dash-row-head">
+                            <label>Efectivo recibido por día</label>
+                            <div class="dash-mini-tabs" id="dash-days-tabs">
+                                <button class="active" onclick="setDashDays(7,this)">7 días</button>
+                                <button onclick="setDashDays(30,this)">30 días</button>
+                            </div>
+                        </div>
                         <div class="chart-container"><canvas id="chart-line"></canvas></div>
                     </div>
+                    <div class="card">
+                        <div class="dash-row-head"><label>Cobrado por cobrador</label><small id="dash-coll-period"></small></div>
+                        <div id="dash-collectors"></div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
                     <div class="card">
                         <label>Distribución de Cartera</label>
                         <div class="chart-container"><canvas id="chart-pie"></canvas></div>
                     </div>
+                    <div class="card" style="border-left: 4px solid var(--danger);">
+                        <div class="dash-row-head"><label style="color:var(--danger)">Mayor mora</label><button class="dash-link" onclick="dashGoMora()">Ver todos →</button></div>
+                        <div id="dash-top-mora"></div>
+                    </div>
+                </div>
+
+                <h4 class="dash-section">Acumulado de la cartera</h4>
+                <div class="kpi-grid dash-kpis">
+                    <div class="kpi"><span>Colocado</span><h3 id="d-col">C$ 0</h3></div>
+                    <div class="kpi"><span>Recuperado</span><h3 id="d-rec">C$ 0</h3></div>
+                    <div class="kpi"><span>Intereses</span><h3 id="d-int">C$ 0</h3></div>
+                    <div class="kpi"><span>Mora Cobrada</span><h3 id="d-mor">C$ 0</h3></div>
+                </div>
+
+                <h4 class="dash-section">Accesos rápidos</h4>
+                <div class="dash-actions">
+                    <button class="btn btn-primary" onclick="openCreModal()">+ Nuevo crédito</button>
+                    <button class="btn btn-sec" onclick="openCliModal()">+ Nuevo cliente</button>
+                    <button class="btn btn-sec" onclick="dashGo('sect-cre')">Cobrar</button>
+                    <button class="btn btn-sec" onclick="dashGo('sect-arqueo')">Arqueo</button>
+                    <button class="btn btn-sec" onclick="dashGo('sect-agenda')">Agenda</button>
                 </div>
 
                 <div class="card" style="border-left: 4px solid var(--danger);">
@@ -1245,39 +1340,127 @@
         }
 
         // --- DASHBOARD Y GRÁFICAS (CALCULADO ÚNICAMENTE SOBRE CRÉDITOS REALES) ---
+        let dashPeriod = 'hoy';
+        let dashDays = 7;
+        const DASH_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        const DASH_PERIOD_LABEL = { hoy: 'Cobrado hoy', semana: 'Cobrado esta semana', mes: 'Cobrado este mes' };
+        const dashMoney = n => 'C$ ' + (Number(n) || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
+        const dashShort = key => key.slice(8, 10) + '/' + key.slice(5, 7);
+
+        function setDashPeriod(mode, el) {
+            dashPeriod = mode;
+            document.querySelectorAll('#dash-period .tab-item').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+            renderDash();
+        }
+        function setDashDays(n, el) {
+            dashDays = n;
+            document.querySelectorAll('#dash-days-tabs button').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+            renderCharts();
+        }
+        function dashGo(id) {
+            const btn = [...document.querySelectorAll('.nav-btn')].find(b => (b.getAttribute('onclick') || '').includes("'" + id + "'"));
+            tab(id, btn);
+            if (id === 'sect-agenda') renderAgenda();
+        }
+        function dashGoMora() {
+            dashGo('sect-agenda');
+            setAgendaView('mora', document.querySelector('#agenda-tabs [data-v="mora"]'));
+        }
+
+        // Cuotas con vencimiento en un día: programadas, cobradas, pendientes y monto por cobrar.
+        function dashScheduleDay(realCredits, day) {
+            const out = { total: 0, paid: 0, pend: 0, amount: 0 };
+            realCredits.forEach(c => (c.schedule || []).forEach(s => {
+                if (getDaysDiff(day, parseDate(s.date)) !== 0) return;
+                const paid = isScheduleItemPaid(s);
+                if (!paid && !(parseFloat(c.saldo) > 0)) return; // crédito cancelado o refinanciado
+                out.total++;
+                if (paid) { out.paid++; return; }
+                out.pend++;
+                out.amount += Math.max(0, (Number(s.amount) || 0) - (Number(s.paid) || 0));
+            }));
+            return out;
+        }
+
         function renderDash() {
             const now = getTodayCalendar();
+            const todayKey = toDateKey(now);
             const realCredits = db.cre.filter(c => !c.esPrueba);
             const realCreIds = new Set(realCredits.map(c => c.id));
             const realPagos = db.pag.filter(p => realCreIds.has(p.creId));
+            const setText = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
 
             const col = realCredits.reduce((a, b) => a + (parseFloat(b.cap) || 0), 0);
             const rec = realPagos.reduce((a, b) => a + (parseFloat(b.t) - parseFloat(b.m || 0)), 0);
             const ints = realCredits.reduce((a, b) => a + (parseFloat(b.total || 0) - parseFloat(b.cap || 0)), 0);
             const pen = realCredits.reduce((a, b) => a + (parseFloat(b.saldo) || 0), 0);
             const mor = realPagos.reduce((a, b) => a + (parseFloat(b.m) || 0), 0);
+            const activos = realCredits.filter(c => parseFloat(c.saldo) > 0);
 
-            const creEnMora = realCredits.filter(c => {
-                if (parseFloat(c.saldo) <= 0) return false;
+            const moraRows = [];
+            activos.forEach(c => {
                 const summary = getArrearsSummary(c, now);
-                return summary.overdueCount > 0;
+                if (summary.overdueCount > 0) moraRows.push({ c, cli: db.cli.find(x => x.id === c.cliId), summary });
             });
-            
-            document.getElementById('d-cre-mora').innerText = creEnMora.length;
-            document.getElementById('d-col').innerText = `C$ ${col.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
-            document.getElementById('d-rec').innerText = `C$ ${rec.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
-            document.getElementById('d-int').innerText = `C$ ${ints.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
-            document.getElementById('d-pen').innerText = `C$ ${pen.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
-            document.getElementById('d-mor').innerText = `C$ ${mor.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+            moraRows.sort((a, b) => b.summary.totalArrears - a.summary.totalArrears);
+
+            setText('dash-date', `${DIAS_ES[now.getDay()]} ${now.getDate()} de ${DASH_MESES[now.getMonth()]}`);
+            setText('d-pen', dashMoney(pen));
+            setText('d-hero-sub', `${activos.length} crédito(s) activo(s) · ${new Set(activos.map(c => c.cliId)).size} cliente(s) con saldo`);
+            setText('d-col', dashMoney(col));
+            setText('d-rec', dashMoney(rec));
+            setText('d-int', dashMoney(ints));
+            setText('d-mor', dashMoney(mor));
+            setText('d-cre-mora', moraRows.length);
+            setText('d-mora-amt', moraRows.length ? dashMoney(moraRows.reduce((a, r) => a + r.summary.totalArrears, 0)) + ' atrasado' : 'Sin atrasos');
+
+            // Efectivo recibido en el período elegido (misma regla que el Arqueo)
+            const [from, to] = GycRules.range(dashPeriod, todayKey);
+            const rep = GycRules.cashReport(db, from, to);
+            setText('d-p-label', DASH_PERIOD_LABEL[dashPeriod]);
+            setText('d-p-total', dashMoney(rep.total));
+            setText('d-p-rec', dashMoney(rep.recovered));
+            setText('d-p-mor', dashMoney(rep.mora));
+            setText('d-p-count', `${rep.rows.length} cobro(s)`);
+            setText('dash-coll-period', dashPeriod === 'hoy' ? 'Hoy' : `${dashShort(from)} – ${dashShort(to)}`);
+
+            // Cuotas de hoy y de mañana
+            const hoy = dashScheduleDay(realCredits, now);
+            const manana = new Date(now); manana.setDate(now.getDate() + 1);
+            const man = dashScheduleDay(realCredits, manana);
+            setText('dash-today-date', `${now.getDate()}/${String(now.getMonth() + 1).padStart(2, '0')}`);
+            setText('dt-total', hoy.total);
+            setText('dt-paid', hoy.paid);
+            setText('dt-pend', hoy.pend);
+            setText('dt-amt', dashMoney(hoy.amount));
+            const bar = document.getElementById('dash-today-bar');
+            if (bar) bar.style.width = (hoy.total ? Math.round(hoy.paid / hoy.total * 100) : 0) + '%';
+            setText('dt-tomorrow', man.total ? `Mañana: ${man.pend} cuota(s) por cobrar · ${dashMoney(man.amount)}` : 'Mañana: sin cuotas programadas');
+
+            // Cobrado por cobrador
+            const entries = Object.entries(rep.byCollector).sort((a, b) => b[1] - a[1]);
+            const maxColl = entries.length ? entries[0][1] : 0;
+            document.getElementById('dash-collectors').innerHTML = entries.map(([name, total]) => `
+                <div class="dash-item" style="display:block;">
+                    <div style="display:flex; justify-content:space-between; gap:10px;"><span>${escapeText(name)}</span><b>${dashMoney(total)}</b></div>
+                    <div class="dash-bar"><div style="width:${maxColl ? Math.round(total / maxColl * 100) : 0}%"></div></div>
+                </div>`).join('') || '<p class="dash-empty">Sin cobros en este período.</p>';
+
+            // Mayor mora (top 5 por monto atrasado)
+            document.getElementById('dash-top-mora').innerHTML = moraRows.slice(0, 5).map(r => {
+                const maxDias = Math.max(...r.summary.overdueItems.map(o => o.daysLate));
+                return `<div class="dash-item">
+                    <div><b style="white-space:normal;">${escapeText(r.cli?.nom || 'Cliente')}</b><small>${escapeText(r.c.id)} · ${r.summary.overdueCount} cuota(s) · ${maxDias} día(s)</small></div>
+                    <b style="color:var(--danger)">${dashMoney(r.summary.totalArrears)}</b>
+                </div>`;
+            }).join('') || '<p class="dash-empty">Sin mora pendiente 🎉</p>';
 
             let moraHtml = '';
-            realCredits.forEach(c => {
-                if (parseFloat(c.saldo) <= 0) return;
-                const summary = getArrearsSummary(c, now);
-                if (summary.overdueItems.length === 0) return;
-                const cli = db.cli.find(x => x.id === c.cliId);
+            moraRows.forEach(({ c, cli, summary }) => {
                 summary.overdueItems.forEach(overdue => {
-                    moraHtml += `<tr class="mora-row"><td>${cli?.nom ? cli.nom.substring(0,15) : 'Cliente'}</td><td>${c.id} #${overdue.item.n}</td><td>${overdue.item.date}</td><td>${overdue.daysLate}</td><td>C$ ${(overdue.pendingAmount + overdue.moraAmount).toFixed(2)}</td></tr>`;
+                    moraHtml += `<tr class="mora-row"><td>${cli?.nom ? escapeText(cli.nom.substring(0, 15)) : 'Cliente'}</td><td>${escapeText(c.id)} #${overdue.item.n}</td><td>${overdue.item.date}</td><td>${overdue.daysLate}</td><td>C$ ${(overdue.pendingAmount + overdue.moraAmount).toFixed(2)}</td></tr>`;
                 });
             });
             document.getElementById('dash-mora-list').innerHTML = moraHtml || '<tr><td colspan="5" align="center">Sin mora pendiente actualmente</td></tr>';
@@ -1297,36 +1480,35 @@
                 realPagos = db.pag.filter(p => realCreIds.has(p.creId));
             }
 
-            const lastPagos = realPagos.slice(-7);
-            const lineLabels = lastPagos.map(p => p.f);
-            const lineDataCobros = lastPagos.map(p => p.t);
-            const lineDataMora = lastPagos.map(p => p.m);
+            // Efectivo recibido por día (7 o 30 días), con ceros en los días sin cobros
+            const todayKey = toDateKey(getTodayCalendar());
+            const series = GycRules.dailySeries(db, GycRules.addDays(todayKey, -(dashDays - 1)), todayKey);
+            const labels = series.map(x => dashDays === 7
+                ? DIAS_ES[new Date(x.date + 'T12:00:00').getDay()].slice(0, 3) + ' ' + Number(x.date.slice(8, 10))
+                : dashShort(x.date));
 
             if (lineChart) lineChart.destroy();
             const ctxL = document.getElementById('chart-line').getContext('2d');
             lineChart = new Chart(ctxL, {
-                type: 'line',
+                type: 'bar',
                 data: {
-                    labels: lineLabels.length ? lineLabels : ['Sin cobros'],
-                    datasets: [
-                        { label: 'Recibido', data: lineDataCobros.length ? lineDataCobros : [0], borderColor: '#1a7f4b', tension: 0.35, fill: true, backgroundColor: 'rgba(26, 127, 75, 0.12)' },
-                        { label: 'Mora', data: lineDataMora.length ? lineDataMora : [0], borderColor: '#d64545', tension: 0.35 }
-                    ]
+                    labels,
+                    datasets: [{ label: 'Recibido', data: series.map(x => x.total), backgroundColor: '#1a7f4b', borderRadius: 6, maxBarThickness: 28 }]
                 },
-                options: { 
-                    maintainAspectRatio: false, 
+                options: {
+                    maintainAspectRatio: false,
                     responsive: true,
-                    plugins: { legend: { display: false } }, 
-                    scales: { 
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + dashMoney(c.parsed.y) } } },
+                    scales: {
                         y: { beginAtZero: true, grid: { color: gridCol } },
-                        x: { grid: { display: false } }
-                    } 
+                        x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } }
+                    }
                 }
             });
 
             const penCap = realCredits.reduce((a, b) => a + (parseFloat(b.saldo) || 0), 0);
             const totalRec = realPagos.reduce((a, b) => a + (parseFloat(b.t) - parseFloat(b.m || 0)), 0);
-            
+
             if (pieChart) pieChart.destroy();
             const ctxP = document.getElementById('chart-pie').getContext('2d');
             pieChart = new Chart(ctxP, {
@@ -1339,10 +1521,10 @@
                         borderWidth: 0
                     }]
                 },
-                options: { 
-                    maintainAspectRatio: false, 
+                options: {
+                    maintainAspectRatio: false,
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { color: txtCol, font: { size: 11 } } } } 
+                    plugins: { legend: { position: 'bottom', labels: { color: txtCol, font: { size: 11 } } } }
                 }
             });
         }

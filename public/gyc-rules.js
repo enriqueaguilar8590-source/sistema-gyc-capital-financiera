@@ -34,5 +34,17 @@
         const total = rows.reduce((s,p)=>s+Number(p.t),0), mora = rows.reduce((s,p)=>s+(Number(p.m)||0),0);
         return {rows,total,mora,recovered:total-mora,byCollector};
     }
-    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport};
+    function addDays(day, n) {
+        const d = new Date(day+'T12:00:00');
+        d.setDate(d.getDate()+n);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    function dailySeries(db, from, to, collector='') {
+        const totals = {};
+        cashReport(db, from, to, collector).rows.forEach(p=>{ const k = dateKey(p.fechaISO || p.f); totals[k] = (totals[k] || 0) + Number(p.t); });
+        const days = [];
+        for(let k = from; k <= to; k = addDays(k, 1)) days.push({date:k,total:totals[k] || 0});
+        return days;
+    }
+    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries};
 })(globalThis);

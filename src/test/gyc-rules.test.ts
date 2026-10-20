@@ -16,3 +16,9 @@ describe('recovered cash',()=>{
   it('week runs Monday to Sunday',()=>expect(rules.range('semana','2026-10-20')).toEqual(['2026-10-19','2026-10-25']));
   it('range and collector filter are inclusive',()=>expect(rules.cashReport(db,'2026-10-19','2026-10-20','Luis').total).toBe(50));
 });
+describe('dashboard daily series',()=>{
+  const db={cre:[{id:'real'}],pag:[{creId:'real',fechaISO:'2026-10-19',t:50,g:'Luis'},{creId:'real',fechaISO:'2026-10-19',t:30,g:'Ana'},{creId:'real',fechaISO:'2026-10-21',t:105,m:5,g:'Ana'}]};
+  it('adds days across month boundaries',()=>{ expect(rules.addDays('2026-10-31',1)).toBe('2026-11-01'); expect(rules.addDays('2026-10-19',-6)).toBe('2026-10-13'); });
+  it('lists every day, adding zero for days without payments',()=>expect(rules.dailySeries(db,'2026-10-19','2026-10-22').map((x:any)=>x.total)).toEqual([80,0,105,0]));
+  it('daily series respects the collector filter',()=>expect(rules.dailySeries(db,'2026-10-19','2026-10-21','Luis').map((x:any)=>x.total)).toEqual([50,0,0]));
+});
