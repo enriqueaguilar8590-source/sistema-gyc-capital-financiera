@@ -124,7 +124,7 @@ function Sistema({ role }: { role: string }) {
   if (!ready) return <Center><Logo /><p>Descargando datos de la nube…</p></Center>;
   return (
     <div className="flex h-dvh flex-col bg-background">
-      <iframe ref={frame} src="/sistema.html" title="GYC Capital" className="w-full flex-1 border-0" />
+      <iframe ref={frame} src={`/sistema.html?role=${encodeURIComponent(role)}`} title="GYC Capital" className="w-full flex-1 border-0" />
       <div className="flex items-center justify-between gap-3 border-t border-border bg-brand-deep px-3 py-1.5 text-xs text-brand-deep-foreground">
         <span>☁ {status}</span>
         <div className="flex gap-4">
