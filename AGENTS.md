@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep the existing standalone system UI; share browser-safe permission and cash-report rules through a public script tested with Vitest.
+- Team membership roles are authoritative in the database; legacy internal user permissions can only narrow cloud permissions, and workspace writes must validate role-specific changes server-side.
