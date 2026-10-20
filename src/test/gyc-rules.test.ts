@@ -1,0 +1,18 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+let rules: any;
+beforeAll(()=>{ const context=vm.createContext({}); vm.runInContext(readFileSync('public/gyc-rules.js','utf8'),context); rules=context.GycRules; });
+describe('requested permissions',()=>{
+  it('administrator has full access',()=>expect(['collect','edit','users','createClient','createCredit'].every(a=>rules.can('admin',a))).toBe(true));
+  it('disburser creates clients and credits but cannot collect or edit',()=>expect(['createClient','createCredit','collect','edit'].map(a=>rules.can('desembolsador',a))).toEqual([true,true,false,false]));
+  it('collector can collect, not create credits or edit',()=>expect(['collect','createCredit','edit'].map(a=>rules.can('cobrador',a))).toEqual([true,false,false]));
+  it('assistant cannot mutate anything',()=>expect(['collect','edit','users','createClient','createCredit'].map(a=>rules.can('asistente',a))).toEqual([false,false,false,false,false]));
+  it('only inactive other users may be deleted',()=>{ expect(rules.canDeleteUser({u:'ana',s:'Inactivo'},'admin')).toBe(true); expect(rules.canDeleteUser({u:'ana',s:'Activo'},'admin')).toBe(false); expect(rules.canDeleteUser({u:'admin',s:'Inactivo'},'otro')).toBe(false); });
+});
+describe('recovered cash',()=>{
+  const db={cre:[{id:'real'},{id:'test',esPrueba:true}],pag:[{id:'1',creId:'real',fechaISO:'2026-10-20',t:105,m:5,g:'Ana'},{id:'2',creId:'real',fechaISO:'2026-10-19',t:50,g:'Luis'},{creId:'test',fechaISO:'2026-10-20',t:999},{creId:'real',fechaISO:'2026-10-20',t:200,tipo:'refinanciamiento'},{creId:'real',fechaISO:'2025-10-20',t:500}]};
+  it('day counts actual cash and separates mora',()=>{ const r=rules.cashReport(db,'2026-10-20','2026-10-20'); expect([r.total,r.recovered,r.mora]).toEqual([105,100,5]); });
+  it('week runs Monday to Sunday',()=>expect(rules.range('semana','2026-10-20')).toEqual(['2026-10-19','2026-10-25']));
+  it('range and collector filter are inclusive',()=>expect(rules.cashReport(db,'2026-10-19','2026-10-20','Luis').total).toBe(50));
+});
