@@ -78,6 +78,13 @@
         }
 
         .hidden { display: none !important; }
+        button:disabled { opacity: .42; cursor: not-allowed; }
+        .user-actions { display:flex; gap:6px; flex-wrap:wrap; }
+        .cash-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0; }
+        .cash-title { margin-bottom:16px; color:var(--primary); }
+        .cash-section { margin:20px 0; }
+        .bottom-nav { overflow-x:auto; }
+        .nav-btn { flex-shrink:0; }
 
         /* =========================================================
            PANTALLA DE BIENVENIDA (INICIO)
@@ -598,6 +605,7 @@
             <button class="nav-btn active" onclick="tab('sect-dash', this)"><i>📊</i><span>Resumen</span></button>
             <button class="nav-btn" onclick="tab('sect-cli', this)"><i>👥</i><span>Clientes</span></button>
             <button class="nav-btn" onclick="tab('sect-cre', this)"><i>💳</i><span>Créditos</span></button>
+            <button class="nav-btn" onclick="tab('sect-arqueo', this)"><i>🧮</i><span>Arqueo</span></button>
             <button class="nav-btn" onclick="tab('sect-rep', this)"><i>📑</i><span>Reportes</span></button>
             <button class="nav-btn" onclick="tab('sect-agenda', this); renderAgenda();"><i>🗓️</i><span>Agenda</span></button>
             <button class="nav-btn" onclick="tab('sect-adj', this)"><i>⚙️</i><span>Ajustes</span></button>
@@ -686,6 +694,22 @@
                 <div id="report-content" class="card"></div>
             </section>
 
+            <section id="sect-arqueo" class="hidden">
+                <h2 class="cash-title">Arqueo de recuperado</h2>
+                <div class="tab-group" id="cash-tabs">
+                    <button class="tab-item active" onclick="setCashPeriod('hoy',this)">HOY</button>
+                    <button class="tab-item" onclick="setCashPeriod('semana',this)">SEMANA</button>
+                    <button class="tab-item" onclick="setCashPeriod('mes',this)">MES</button>
+                    <button class="tab-item" onclick="setCashPeriod('rango',this)">POR FECHAS</button>
+                </div>
+                <div class="cash-filters">
+                    <div><label>Desde</label><input id="cash-from" type="date" onchange="cashCustomRange()"></div>
+                    <div><label>Hasta</label><input id="cash-to" type="date" onchange="cashCustomRange()"></div>
+                    <div><label>Cobrador</label><select id="cash-collector" onchange="renderCash()"><option value="">Todos</option></select></div>
+                </div>
+                <div id="cash-content"></div>
+            </section>
+
             <!-- AGENDA DE COBROS (NUEVO) -->
             <section id="sect-agenda" class="hidden">
                 <div class="tab-group" id="agenda-tabs">
@@ -735,7 +759,9 @@
                         <input type="password" id="u-pass" placeholder="Contraseña">
                         <select id="u-role">
                             <option value="admin">Administrador (Acceso total)</option>
-                            <option value="gestor">Gestor (Solo cobros)</option>
+                            <option value="desembolsador">Desembolsador (Clientes y créditos)</option>
+                            <option value="cobrador">Cobrador (Solo cobros)</option>
+                            <option value="asistente">Asistente (Solo lectura)</option>
                         </select>
                         <button class="btn btn-primary" onclick="addUser()">AÑADIR USUARIO</button>
                     </div>
@@ -912,6 +938,7 @@
         </div>
     </div>
 
+    <script src="/gyc-rules.js"></script>
     <script>
         // --- BASE DE DATOS E INICIALIZACIÓN ---
         let db = JSON.parse(localStorage.getItem('gyc_v10')) || {
@@ -931,6 +958,33 @@
         if(!db.cfg.mora) db.cfg.mora = { activa: 'si', gracia: 0 };
         if(!db.cfg.secuencias) db.cfg.secuencias = { cliPref: "CLI", cliNext: 1, crePref: "CRE", creNext: 1, recPref: "RC", recNext: 1 };
 
+        const cloudRole = new URLSearchParams(location.search).get('role') || 'asistente';
+        const roleLabels = {admin:'Administrador',owner:'Administrador',gestor:'Cobrador',cobrador:'Cobrador',desembolsador:'Desembolsador',asistente:'Asistente'};
+        function allowed(action) {
+            return !!session && GycRules.can(cloudRole, action) && GycRules.can(session.r, action);
+        }
+        function requireAction(action) {
+            if(allowed(action)) return true;
+            alert('Tu permiso no permite esta acción.'); return false;
+        }
+        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit'};
+        function applyPermissions() {
+            document.querySelectorAll('[onclick],input[type=file]').forEach(el => {
+                const code = el.getAttribute('onclick') || el.getAttribute('onchange') || '';
+                const name = code.match(/^(\w+)\(/)?.[1];
+                let action = actionMap[name];
+                if(name === 'openCliModal') action = /openCliModal\(\)/.test(code) ? 'createClient' : 'edit';
+                if(name === 'openCreModal') action = /openCreModal\(\)/.test(code) ? 'createCredit' : 'edit';
+                if(name === 'saveCli') action = document.getElementById('cli-edit-id').value ? 'edit' : 'createClient';
+                if(name === 'saveCre') action = document.getElementById('cre-edit-id').value ? 'edit' : 'createCredit';
+                if(action) { el.disabled = !allowed(action); el.title = el.disabled ? 'Sin permiso para esta acción' : ''; }
+            });
+            document.querySelectorAll('#adj-user input,#adj-user select,#adj-emp input,#adj-emp textarea,#adj-db input:not([type=file])').forEach(el=>el.disabled=!allowed('edit'));
+            document.getElementById('cre-refi').disabled = !allowed('edit');
+            if(!allowed('edit')) document.getElementById('cre-refi').value = '';
+        }
+        const permissionObserver = new MutationObserver(applyPermissions);
+        permissionObserver.observe(document.body,{childList:true,subtree:true});
         let session = null;
         let lineChart = null;
         let pieChart = null;
@@ -941,15 +995,15 @@
 
 
         // --- Sincronización con la nube (app) ---
-        function save() { localStorage.setItem('gyc_v10', JSON.stringify(db)); try { parent.postMessage('gyc-save', '*'); } catch(e) {} }
+        function save() { if(!session || GycRules.normalize(cloudRole)==='asistente' || GycRules.normalize(session.r)==='asistente') return; localStorage.setItem('gyc_v10', JSON.stringify(db)); try { parent.postMessage('gyc-save', '*'); } catch(e) {} }
         window.__gycApply = function(d) {
             db = d;
             if(!db.trash) db.trash = []; if(!db.hist) db.hist = []; if(!db.cfg) db.cfg = {};
             if(!db.cfg.mora) db.cfg.mora = { activa: 'si', gracia: 0 };
-            if(session) { const u = (db.users||[]).find(x => x.u === session.u); if(u) session = u; }
-            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
+            if(session) { const u = (db.users||[]).find(x => x.u === session.u); if(!u || u.s === 'Inactivo') { session=null; location.reload(); return; } session = u; }
+            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','renderCash','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
         };
-        function log(acc) { db.hist.unshift({ u: session.u, n: session.n, f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), a: acc }); save(); }
+        function log(acc) { if(!session || GycRules.normalize(cloudRole)==='asistente' || GycRules.normalize(session.r)==='asistente') return; db.hist.unshift({ u: session.u, n: session.n, f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), a: acc }); save(); }
 
         // --- MANEJO DE FECHAS ROBUSTO (SOLO FECHAS DE CALENDARIO) ---
         function parseDate(dateStr) {
@@ -1128,7 +1182,7 @@
                 document.getElementById('view-login').classList.add('hidden');
                 document.getElementById('view-app').classList.remove('hidden');
                 document.getElementById('display-user').innerText = user.n;
-                document.getElementById('display-role').innerText = user.r.toUpperCase();
+                document.getElementById('display-role').innerText = roleLabels[GycRules.normalize(cloudRole)==='admin' ? user.r : cloudRole] || 'Sin permiso';
                 init();
                 log("Inicio de sesión");
             } else alert("Credenciales incorrectas o usuario inactivo.");
@@ -1167,9 +1221,9 @@
         }
 
         function init() {
-            checkAndMigrateCredits();
-            migrateScheduleMoraFields();
-            try { makeWeeklyBackupIfNeeded(); } catch(e) { console.warn('Respaldo semanal:', e); }
+            if(allowed('edit')) { checkAndMigrateCredits(); migrateScheduleMoraFields(); }
+            applyPermissions();
+            try { if(allowed('edit')) makeWeeklyBackupIfNeeded(); } catch(e) { console.warn('Respaldo semanal:', e); }
             renderDash();
             loadCfg();
             document.getElementById('header-title').innerText = db.cfg.name;
@@ -1304,6 +1358,8 @@
             if(id === 'sect-hist') renderHist();
             if(id === 'sect-rep') renderReport(currentReport, currentReportEl || document.querySelector('#sect-rep .tab-item'));
             if(id === 'sect-dash') renderDash();
+            if(id === 'sect-arqueo') { if(!document.getElementById('cash-from').value) setCashPeriod('hoy'); else renderCash(); }
+            applyPermissions();
             window.scrollTo(0,0);
         }
 
@@ -1312,6 +1368,7 @@
             document.getElementById(id).classList.remove('hidden');
             document.querySelectorAll('#sect-adj .tab-item').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
+            applyPermissions();
             if(id === 'adj-trash') renderTrash();
             if(id === 'adj-db') renderBackups();
             if(id === 'adj-user') renderUsers();
@@ -1337,6 +1394,7 @@
         }
 
         function openCliModal(id = null) {
+            if(!requireAction(id ? 'edit' : 'createClient')) return;
             document.getElementById('cli-edit-id').value = id || '';
             if(id) {
                 const c = db.cli.find(x => x.id === id);
@@ -1352,6 +1410,7 @@
         }
 
         function saveCli() {
+            if(!requireAction(document.getElementById('cli-edit-id').value ? 'edit' : 'createClient')) return;
             const editId = document.getElementById('cli-edit-id').value;
             const nom = document.getElementById('cli-nom').value;
             if(!nom) return alert("El nombre es obligatorio");
@@ -1413,6 +1472,7 @@
         }
 
         function openCreModal(id = null) {
+            if(!requireAction(id ? 'edit' : 'createCredit')) return;
             const sel = document.getElementById('cre-cli-sel');
             sel.innerHTML = db.cli.map(c => `<option value="${c.id}">${c.nom}</option>`).join('') || '<option disabled>Primero cree un cliente</option>';
             document.getElementById('cre-edit-id').value = id || '';
@@ -1495,6 +1555,7 @@
         }
 
         function saveCre() {
+            if(!requireAction(document.getElementById('cre-edit-id').value ? 'edit' : 'createCredit')) return;
             const editId = document.getElementById('cre-edit-id').value;
             const cliId = document.getElementById('cre-cli-sel').value;
             const cap = parseFloat(document.getElementById('cre-cap').value);
@@ -1544,7 +1605,7 @@
                 };
                 log("Editó crédito: " + editId);
             } else {
-                const refiId = document.getElementById('cre-refi').value;
+                const refiId = allowed('edit') ? document.getElementById('cre-refi').value : '';
                 const oldCre = refiId ? db.cre.find(x => x.id === refiId) : null;
                 const descuento = oldCre ? Math.max(0, parseFloat(oldCre.saldo) || 0) : 0;
                 if(descuento > cap) return alert("El saldo anterior es mayor que el capital del nuevo crédito.");
@@ -1563,7 +1624,7 @@
                     db.pag.push({
                         id: recId, creId: oldCre.id, nom: cliOld ? cliOld.nom : 'Desconocido', cid: oldCre.cliId,
                         pri: descuento * (1 - ratio), int: descuento * ratio, m: 0, t: descuento,
-                        sa: descuento, sq: 0, obs: `Cancelado por descuento en nuevo crédito ${newId}`,
+                        sa: descuento, sq: 0, tipo:'refinanciamiento', fechaISO:toDateKey(getTodayCalendar()), obs: `Cancelado por descuento en nuevo crédito ${newId}`,
                         f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), g: session.n
                     });
                     (oldCre.schedule || []).forEach(it => {
@@ -1583,6 +1644,7 @@
         let payLastSuggested = '';
 
         function payPopup(id) {
+            if(!requireAction('collect')) return;
             const c = db.cre.find(x => x.id === id);
             if(!c || !(c.schedule || []).some(it => !isScheduleItemPaid(it))) return alert("Este crédito ya está cancelado");
             activeCreId = id;
@@ -1612,7 +1674,7 @@
             const next = summary.nextItem || (c.schedule || []).find(it => !isScheduleItemPaid(it));
 
             // Dispensa de mora: solo administradores, y solo si hay mora pendiente
-            const esAdmin = !!(session && session.r === 'admin');
+            const esAdmin = allowed('edit');
             document.getElementById('pay-dispensa-box').classList.toggle('hidden', !(esAdmin && summary.moraAmount > 0.005));
             const disEl = document.getElementById('pay-dispensa');
             let dis = esAdmin ? Math.max(0, parseFloat(disEl.value) || 0) : 0;
@@ -1652,12 +1714,14 @@
         }
 
         function dispensarTodaMora() {
+            if(!requireAction('edit')) return;
             const m = parseFloat(document.getElementById('pay-mora').value) || 0;
             document.getElementById('pay-dispensa').value = m.toFixed(2);
             refreshPayPreview();
         }
 
         function confirmPay() {
+            if(!requireAction('collect')) return;
             const c = db.cre.find(x => x.id === activeCreId);
             const totalRecibido = parseFloat(document.getElementById('pay-mnt').value) || 0;
             const obs = document.getElementById('pay-obs').value;
@@ -1671,10 +1735,11 @@
             const moraPendienteAlMomento = summary.moraAmount;
 
             // Dispensa de mora (solo administrador): perdona únicamente intereses moratorios
-            const esAdmin = !!(session && session.r === 'admin');
+            const esAdmin = allowed('edit');
             let dispensa = esAdmin ? Math.max(0, parseFloat(document.getElementById('pay-dispensa').value) || 0) : 0;
             dispensa = Math.min(dispensa, moraPendienteAlMomento);
 
+            if(totalRecibido > c.saldo + moraPendienteAlMomento - dispensa + 0.005) return alert("El monto supera el saldo y la mora pendiente.");
             if(totalRecibido < 0 || (totalRecibido <= 0 && dispensa <= 0.005)) return alert("Monto no válido");
 
             // 1. Cobrar la mora de todas las cuotas, empezando por la más antigua.
@@ -1743,7 +1808,7 @@
                 t: totalRecibido, 
                 sa: saldoAnterior, 
                 sq: saldoAnterior - montoParaCuota,
-                obs, f: today.toLocaleDateString(), h: new Date().toLocaleTimeString(), fReg: new Date().toLocaleDateString(), g: session.n
+                obs, fechaISO:todayKey, cobradorUsuario:session.u, f: today.toLocaleDateString(), h: new Date().toLocaleTimeString(), fReg: new Date().toLocaleDateString(), g: session.n
             };
 
             c.saldo -= montoParaCuota;
@@ -1861,20 +1926,43 @@
         }
 
         // --- GESTIÓN DE USUARIOS ---
+        function escapeText(value) { return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function renderUsers() {
             document.getElementById('list-users').innerHTML = db.users.map((u, i) => `
-                <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg-input); margin-bottom:8px; border-radius:8px; align-items:center;">
-                    <div><b>${u.n}</b> (${u.u}) - <small>${u.r.toUpperCase()}</small></div>
-                    <button class="btn btn-sm ${u.s === 'Activo' ? 'btn-primary' : 'btn-danger'}" onclick="toggleUser(${i})">${u.s}</button>
+                <div style="display:flex; justify-content:space-between; padding:10px; background:var(--bg-input); margin-bottom:8px; border-radius:8px; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div><b>${escapeText(u.n)}</b> (${escapeText(u.u)})<br><small>${roleLabels[u.r] || escapeText(u.r)}</small></div>
+                    <div class="user-actions">
+                        <select aria-label="Permiso de ${escapeText(u.n)}" onchange="changeUserRole(${i},this.value)" ${!allowed('users') || u.u==='admin' || u.u===session?.u ? 'disabled' : ''}>
+                            ${['admin','desembolsador','cobrador','asistente'].map(r=>`<option value="${r}" ${GycRules.normalize(u.r)===r?'selected':''}>${roleLabels[r]}</option>`).join('')}
+                        </select>
+                        <button class="btn btn-sm ${u.s === 'Activo' ? 'btn-primary' : 'btn-sec'}" onclick="toggleUser(${i})">${u.s === 'Activo' ? 'Inhabilitar' : 'Habilitar'}</button>
+                        ${GycRules.canDeleteUser(u,session?.u) ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${i})">Eliminar</button>` : ''}
+                    </div>
                 </div>
             `).join('') || '<p>No hay otros usuarios.</p>';
+            applyPermissions();
+        }
+        function changeUserRole(i, role) {
+            if(!requireAction('users')) return;
+            const user=db.users[i];
+            if(!user || user.u==='admin' || user.u===session.u || !['admin','desembolsador','cobrador','asistente'].includes(role)) return renderUsers();
+            user.r=role; log('Cambió permiso de '+user.u+' a '+roleLabels[role]); save(); renderUsers();
+        }
+        function deleteUser(i) {
+            if(!requireAction('users')) return;
+            const user=db.users[i];
+            if(!GycRules.canDeleteUser(user,session.u)) return alert('Solo puedes eliminar otros usuarios inhabilitados.');
+            if(!confirm('¿Eliminar definitivamente a '+user.n+'? Sus cobros e historial se conservarán.')) return;
+            db.users.splice(i,1); log('Eliminó usuario inhabilitado: '+user.u); save(); renderUsers();
         }
 
         function addUser() {
+            if(!requireAction('users')) return;
             const n = document.getElementById('u-nom').value;
             const u = document.getElementById('u-user').value;
             const p = document.getElementById('u-pass').value;
             const r = document.getElementById('u-role').value;
+            if(db.users.some(x=>x.u.toLowerCase()===u.trim().toLowerCase())) return alert('Ese usuario ya existe.');
             if(!n || !u || !p) return alert("Complete todos los campos del usuario");
             db.users.push({ n, u, p, r, s: 'Activo' });
             save(); renderUsers();
@@ -1882,13 +1970,15 @@
         }
 
         function toggleUser(i) {
-            if(db.users[i].u === 'admin') return alert("No se puede desactivar al usuario administrador principal.");
+            if(!requireAction('users')) return;
+            if(db.users[i].u === 'admin' || db.users[i].u === session.u) return alert("No se puede desactivar al usuario administrador principal.");
             db.users[i].s = db.users[i].s === 'Activo' ? 'Inactivo' : 'Activo';
             save(); renderUsers();
         }
 
         // --- PAPELERA ---
         function moveToTrash(type, id) {
+            if(!requireAction('edit')) return;
             if(!confirm("¿Está seguro de mover este registro a la papelera?")) return;
             let list = type === 'cli' ? db.cli : db.cre;
             if(type === 'cli') {
@@ -1918,6 +2008,7 @@
         }
 
         function restoreFromTrash(i) {
+            if(!requireAction('edit')) return;
             const item = db.trash.splice(i, 1)[0];
             if(item.type === 'cli') db.cli.push(item.data);
             else db.cre.push(item.data);
@@ -1938,6 +2029,7 @@
         }
 
         function saveCfg() {
+            if(!requireAction('edit')) return;
             db.cfg.name = document.getElementById('cfg-name').value;
             db.cfg.tel = document.getElementById('cfg-tel').value;
             db.cfg.dir = document.getElementById('cfg-dir').value;
@@ -1947,6 +2039,7 @@
         }
 
         function saveSequences() {
+            if(!requireAction('edit')) return;
             db.cfg.secuencias.cliPref = document.getElementById('seq-cli-pref').value;
             db.cfg.secuencias.cliNext = parseInt(document.getElementById('seq-cli-next').value);
             db.cfg.secuencias.crePref = document.getElementById('seq-cre-pref').value;
@@ -2148,6 +2241,38 @@
             }
         }
 
+        // --- ARQUEO: SOLO EFECTIVO RECUPERADO ---
+        function cashCustomRange() {
+            document.querySelectorAll('#cash-tabs .tab-item').forEach((b,i)=>b.classList.toggle('active',i===3));
+            renderCash();
+        }
+        function setCashPeriod(mode, el) {
+            document.querySelectorAll('#cash-tabs .tab-item').forEach(b=>b.classList.remove('active'));
+            (el || document.querySelector('#cash-tabs .tab-item')).classList.add('active');
+            if(mode!=='rango') {
+                const [from,to]=GycRules.range(mode,toDateKey(getTodayCalendar()));
+                document.getElementById('cash-from').value=from; document.getElementById('cash-to').value=to;
+            }
+            renderCash();
+        }
+        function renderCash() {
+            const from=document.getElementById('cash-from').value, to=document.getElementById('cash-to').value;
+            if(!from || !to) return;
+            const content=document.getElementById('cash-content');
+            if(from>to) { content.innerHTML='<p>La fecha inicial debe ser anterior a la fecha final.</p>'; return; }
+            const select=document.getElementById('cash-collector'), chosen=select.value;
+            const names=[...new Set(db.pag.map(p=>p.g).filter(Boolean))].sort();
+            select.innerHTML='<option value="">Todos</option>'+names.map(n=>`<option value="${escapeText(n)}">${escapeText(n)}</option>`).join(''); select.value=chosen;
+            const report=GycRules.cashReport(db,from,to,chosen);
+            content.innerHTML=`<div class="kpi-grid">
+                <div class="kpi"><span>Total recibido</span><h3>${agendaFmt(report.total)}</h3></div>
+                <div class="kpi"><span>Recuperado sin mora</span><h3>${agendaFmt(report.recovered)}</h3></div>
+                <div class="kpi"><span>Mora cobrada</span><h3>${agendaFmt(report.mora)}</h3></div>
+                <div class="kpi"><span>Cobros</span><h3>${report.rows.length}</h3></div>
+                </div><h3 class="cash-section">Por cobrador</h3><div class="table-wrapper"><table><thead><tr><th>Cobrador</th><th>Total recibido</th></tr></thead><tbody>${Object.entries(report.byCollector).map(([name,total])=>`<tr><td>${escapeText(name)}</td><td>${agendaFmt(total)}</td></tr>`).join('') || '<tr><td colspan="2">Sin cobros recuperados en este período.</td></tr>'}</tbody></table></div>
+                <h3 class="cash-section">Detalle de cobros · Créditos reales</h3><div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Recibo</th><th>Cliente</th><th>Cobrador</th><th>Recuperado</th><th>Mora</th><th>Recibido</th></tr></thead><tbody>${report.rows.map(p=>`<tr><td>${escapeText(p.f)}</td><td>${escapeText(p.id)}</td><td>${escapeText(p.nom)}</td><td>${escapeText(p.g)}</td><td>${agendaFmt(Number(p.t)-(Number(p.m)||0))}</td><td>${agendaFmt(p.m)}</td><td>${agendaFmt(p.t)}</td></tr>`).join('') || '<tr><td colspan="7">Sin movimientos</td></tr>'}</tbody></table></div>`;
+        }
+
         // --- UTILIDADES ---
         function renderHist() {
             document.getElementById('list-hist').innerHTML = db.hist.slice(0, 50).map(h => `
@@ -2276,6 +2401,7 @@
 
         function showModal(id) { 
             document.getElementById(id).classList.remove('hidden'); 
+            applyPermissions();
             document.body.style.overflow = 'hidden';
         }
         function closeModal() { 
@@ -2396,6 +2522,7 @@
         }
 
         function restoreStoredBackup(i) {
+            if(!requireAction('edit')) return;
             const b = readBackupStore().items[i];
             if(!b) return;
             if(!confirm(`¿Restaurar la copia ${b.key}? Se reemplazarán todos los datos actuales (antes se descargará un respaldo de lo actual).`)) return;
@@ -2416,6 +2543,7 @@
         }
 
         function importData(e) {
+            if(!requireAction('edit')) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {

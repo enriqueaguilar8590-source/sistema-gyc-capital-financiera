@@ -15,6 +15,13 @@
       "when": 1792387960457,
       "tag": "0001_shared_workspace_team",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792468030752,
+      "tag": "0002_enforce_team_permissions",
+      "breakpoints": true
     }
   ]
 }
