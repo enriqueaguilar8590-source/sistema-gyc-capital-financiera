@@ -814,8 +814,30 @@
             </section>
 
             <section id="sect-socios" class="hidden">
-                <h2 class="cash-title">Socios</h2>
-                <div id="partners-summary" class="kpi-grid"></div>
+                <div class="dash-head">
+                    <div><h2 class="cash-title" style="margin-bottom:2px">Socios</h2><small>Dashboard del capital aportado</small></div>
+                </div>
+                <div id="partners-summary" class="kpi-grid dash-kpis"></div>
+
+                <div class="charts-grid">
+                    <div class="card">
+                        <div class="dash-row-head">
+                            <label>Aportes por mes</label>
+                            <div class="dash-mini-tabs" id="partner-months-tabs">
+                                <button class="active" onclick="setPartnerMonths(6,this)">6 meses</button>
+                                <button onclick="setPartnerMonths(12,this)">12 meses</button>
+                            </div>
+                        </div>
+                        <div class="chart-container"><canvas id="chart-partner-month"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="dash-row-head"><label>Participación por socio</label><small id="partner-share-note"></small></div>
+                        <div class="chart-container" id="partner-share-wrap"><canvas id="chart-partner-share"></canvas></div>
+                        <div id="partner-share-empty" class="hidden" style="padding:60px 10px;text-align:center;color:var(--text-muted);font-size:13px;">Aún no hay aportes para mostrar.</div>
+                    </div>
+                </div>
+
+                <h4 class="dash-section">Registrar</h4>
                 <div class="grid-2">
                     <form id="partner-form" onsubmit="event.preventDefault(); addPartner()">
                         <h3 class="cash-section">Registrar socio</h3>
@@ -832,11 +854,17 @@
                         <button class="btn btn-primary" type="submit" onclick="" data-partner-write>+ REGISTRAR APORTE</button>
                     </form>
                 </div>
+
                 <h3 class="cash-section">Capital por socio</h3>
-                <div class="table-wrapper"><table><thead><tr><th>Socio</th><th>Teléfono</th><th>Aportes</th><th>Capital aportado</th></tr></thead><tbody id="partners-list"></tbody></table></div>
+                <div class="table-wrapper"><table><thead><tr><th>Socio</th><th>Teléfono</th><th>Aportes</th><th>Capital aportado</th><th>Participación</th><th>Último aporte</th></tr></thead><tbody id="partners-list"></tbody></table></div>
+
                 <h3 class="cash-section">Historial de aportes</h3>
+                <div class="card" id="partner-lock-bar" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <div><b id="partner-lock-title">🔒 Edición de montos bloqueada</b><small id="partner-lock-sub" class="kpi-sub">Para modificar un monto aportado se pide el usuario y la contraseña de Socios.</small></div>
+                    <button type="button" class="btn btn-sm btn-sec" id="partner-lock-btn" onclick="togglePartnerLock()">🔓 DESBLOQUEAR</button>
+                </div>
                 <label for="partner-filter">Socio</label><select id="partner-filter" onchange="renderPartners()"><option value="">Todos</option></select>
-                <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Capital aportado</th><th>Referencia / observación</th><th>Registrado por</th></tr></thead><tbody id="contributions-list"></tbody></table></div>
+                <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Capital aportado</th><th>Referencia / observación</th><th>Registrado por</th><th></th></tr></thead><tbody id="contributions-list"></tbody></table></div>
             </section>
 
             <!-- AGENDA DE COBROS (NUEVO) -->
@@ -1045,6 +1073,40 @@
         </div>
     </div>
 
+    <!-- MODAL: acceso a edición de socios -->
+    <div id="modal-partner-lock" class="modal hidden">
+        <div class="modal-content" style="max-width:380px;">
+            <h3 style="margin-bottom:6px; color: var(--primary);">🔒 Acceso a edición de socios</h3>
+            <small style="display:block; margin-bottom:14px; color:var(--text-muted);">Ingresa el usuario y la contraseña de Socios para modificar montos aportados.</small>
+            <form id="partner-lock-form" onsubmit="event.preventDefault(); unlockPartners()" autocomplete="off">
+                <label for="plock-user">Usuario</label><input id="plock-user" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+                <label for="plock-pass">Contraseña</label><input id="plock-pass" type="password" autocomplete="new-password" required>
+                <p id="plock-msg" class="hidden" style="color:var(--danger); font-size:12px; margin:-4px 0 10px;"></p>
+                <div class="grid-2" style="margin-top:10px;">
+                    <button class="btn btn-primary" type="submit" id="plock-btn">DESBLOQUEAR</button>
+                    <button class="btn btn-sec" type="button" onclick="closeModal()">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: modificar monto aportado -->
+    <div id="modal-partner-edit" class="modal hidden">
+        <div class="modal-content" style="max-width:420px;">
+            <h3 style="margin-bottom:14px; color: var(--primary);">Modificar monto aportado</h3>
+            <div id="pedit-info" class="card" style="font-size:13px; line-height:1.6;"></div>
+            <form onsubmit="event.preventDefault(); saveContributionEdit()">
+                <label for="pedit-amount">Nuevo monto (C$)</label><input id="pedit-amount" type="number" min="0.01" step="0.01" required>
+                <label for="pedit-reason">Motivo del cambio</label><input id="pedit-reason" maxlength="250" placeholder="Ej.: error de digitación" required>
+                <small style="display:block; margin:-4px 0 10px; color:var(--text-muted); font-size:11px;">El monto anterior y el motivo quedan guardados en el historial del aporte.</small>
+                <div class="grid-2" style="margin-top:10px;">
+                    <button class="btn btn-primary" type="submit">GUARDAR CAMBIO</button>
+                    <button class="btn btn-sec" type="button" onclick="closeModal()">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL RECIBO -->
     <div id="modal-rec" class="modal hidden">
         <div class="modal-content" style="max-width:400px; background:#fff; color:#000;">
@@ -1096,7 +1158,7 @@
             if(allowed(action)) return true;
             alert('Tu permiso no permite esta acción.'); return false;
         }
-        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners'};
+        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners'};
         function applyPermissions() {
             document.querySelectorAll('[onclick],input[type=file]').forEach(el => {
                 const code = el.getAttribute('onclick') || el.getAttribute('onchange') || '';
@@ -1577,6 +1639,7 @@
             document.getElementById(id).classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             if(el) el.classList.add('active');
+            if(id !== 'sect-socios' && partnerUnlockUntil) { partnerUnlockUntil = 0; pendingEditId = null; }
             if(id === 'sect-cli') renderCli();
             if(id === 'sect-cre') renderCre();
             if(id === 'sect-socios') renderPartners();
@@ -2312,20 +2375,137 @@
             document.getElementById('search-results').classList.add('hidden');
         }
 
+        let partnerMonths = 6, partnerMonthChart = null, partnerShareChart = null;
+        let partnerUnlockUntil = 0, partnerFails = 0, partnerBlockUntil = 0, pendingEditId = null;
+        const PARTNER_UNLOCK_MS = 10*60*1000, PARTNER_COLORS = ['#1a7f4b','#c9a54a','#3b82f6','#8b5cf6','#d64545','#0ea5a4','#f59e0b','#64748b'];
+        const partnerUnlocked = () => Date.now() < partnerUnlockUntil;
+        const partnersVisible = () => !document.getElementById('sect-socios').classList.contains('hidden');
+        function setPartnerMonths(n, el) {
+            partnerMonths = n;
+            document.querySelectorAll('#partner-months-tabs button').forEach(b => b.classList.remove('active'));
+            if(el) el.classList.add('active');
+            renderPartners();
+        }
+        function renderPartnerCharts(dash) {
+            if(typeof Chart === 'undefined' || !partnersVisible()) return; // sin conexión: las gráficas no cargan, lo demás sigue funcionando
+            const cs=getComputedStyle(document.documentElement);
+            const gridCol=cs.getPropertyValue('--border').trim() || '#e4ece7', txtCol=cs.getPropertyValue('--text-main').trim() || '#10261a';
+            Chart.defaults.color=cs.getPropertyValue('--text-muted').trim() || '#6b7f72';
+            const monthNames=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+            const series=GycRules.monthlyContributions(db.aportes || [], toDateKey(getTodayCalendar()).slice(0,7), partnerMonths);
+            if(partnerMonthChart) partnerMonthChart.destroy();
+            partnerMonthChart=new Chart(document.getElementById('chart-partner-month').getContext('2d'),{
+                type:'bar',
+                data:{labels:series.map(x=>monthNames[Number(x.month.slice(5,7))-1]+' '+x.month.slice(2,4)),datasets:[{label:'Aportado',data:series.map(x=>x.total),backgroundColor:'#1a7f4b',borderRadius:6,maxBarThickness:28}]},
+                options:{maintainAspectRatio:false,responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+dashMoney(c.parsed.y)}}},scales:{y:{beginAtZero:true,grid:{color:gridCol}},x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true}}}}
+            });
+            const withCapital=dash.rows.filter(p=>p.total>0);
+            document.getElementById('partner-share-wrap').classList.toggle('hidden',!withCapital.length);
+            document.getElementById('partner-share-empty').classList.toggle('hidden',!!withCapital.length);
+            document.getElementById('partner-share-note').textContent=withCapital.length ? withCapital.length+(withCapital.length===1?' socio':' socios') : '';
+            if(partnerShareChart) { partnerShareChart.destroy(); partnerShareChart=null; }
+            if(!withCapital.length) return;
+            partnerShareChart=new Chart(document.getElementById('chart-partner-share').getContext('2d'),{
+                type:'doughnut',
+                data:{labels:withCapital.map(p=>p.nom),datasets:[{data:withCapital.map(p=>p.total),backgroundColor:withCapital.map((p,i)=>PARTNER_COLORS[i%PARTNER_COLORS.length]),borderWidth:0}]},
+                options:{maintainAspectRatio:false,responsive:true,plugins:{legend:{position:'bottom',labels:{color:txtCol,font:{size:11}}},tooltip:{callbacks:{label:c=>' '+c.label+': '+dashMoney(c.parsed)+' ('+withCapital[c.dataIndex].share+'%)'}}}}
+            });
+        }
+        function renderPartnerLockBar() {
+            const open=partnerUnlocked();
+            document.getElementById('partner-lock-title').textContent=open ? '🔓 Edición de montos desbloqueada' : '🔒 Edición de montos bloqueada';
+            document.getElementById('partner-lock-sub').textContent=open ? 'Se vuelve a bloquear sola a los 10 minutos o al salir de Socios.' : 'Para modificar un monto aportado se pide el usuario y la contraseña de Socios.';
+            document.getElementById('partner-lock-btn').textContent=open ? '🔒 BLOQUEAR' : '🔓 DESBLOQUEAR';
+        }
         function renderPartners() {
             const partners=db.socios || [], entries=db.aportes || [];
-            const report=GycRules.partnerReport(partners,entries);
-            document.getElementById('partners-summary').innerHTML=`<div class="kpi"><span>Capital total aportado</span><h3>${agendaFmt(report.total)}</h3></div><div class="kpi"><span>Socios registrados</span><h3>${partners.length}</h3></div><div class="kpi"><span>Aportes registrados</span><h3>${entries.length}</h3></div>`;
+            const dash=GycRules.partnerDashboard(partners,entries);
+            const nameOf=id=>partners.find(p=>p.id===id)?.nom || 'Socio no disponible';
+            const big=dash.largest;
+            document.getElementById('partners-summary').innerHTML=
+                `<div class="kpi kpi-hero"><span>Capital total aportado</span><h3>${agendaFmt(dash.total)}</h3><small class="hero-sub">${dash.count} ${dash.count===1?'aporte':'aportes'} de ${dash.partners} ${dash.partners===1?'socio':'socios'}${dash.lastDate?' · último aporte '+escapeText(dash.lastDate):''}</small></div>`+
+                `<div class="kpi"><span>Socios registrados</span><h3>${dash.partners}</h3></div>`+
+                `<div class="kpi" style="--kpi-accent:var(--gold)"><span>Aportes registrados</span><h3>${dash.count}</h3>${dash.edited?`<small class="kpi-sub">${dash.edited} con monto modificado</small>`:''}</div>`+
+                `<div class="kpi"><span>Aporte promedio</span><h3>${agendaFmt(dash.average)}</h3></div>`+
+                `<div class="kpi" style="--kpi-accent:var(--info)"><span>Mayor aporte</span><h3>${big?agendaFmt(big.monto):agendaFmt(0)}</h3>${big?`<small class="kpi-sub">${escapeText(nameOf(big.socioId))} · ${escapeText(big.fecha)}</small>`:''}</div>`;
             const options=partners.map(p=>`<option value="${escapeText(p.id)}">${escapeText(p.nom)}</option>`).join('');
             const select=document.getElementById('contribution-partner'), chosen=select.value;
             select.innerHTML='<option value="">Seleccionar socio</option>'+options; select.value=chosen;
             const filter=document.getElementById('partner-filter'), filtered=filter.value;
             filter.innerHTML='<option value="">Todos</option>'+options; filter.value=filtered;
             const date=document.getElementById('contribution-date'); date.max=toDateKey(getTodayCalendar()); if(!date.value) date.value=date.max;
-            document.getElementById('partners-list').innerHTML=report.rows.map(p=>`<tr><td>${escapeText(p.nom)}</td><td>${escapeText(p.tel || '—')}</td><td>${p.count}</td><td>${agendaFmt(p.total)}</td></tr>`).join('') || '<tr><td colspan="4">Sin socios registrados.</td></tr>';
-            document.getElementById('contributions-list').innerHTML=entries.filter(a=>!filtered || a.socioId===filtered).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id)).map(a=>`<tr><td>${escapeText(a.fecha)}</td><td>${escapeText(partners.find(p=>p.id===a.socioId)?.nom || 'Socio no disponible')}</td><td>${agendaFmt(a.monto)}</td><td>${escapeText(a.obs || '—')}</td><td>${escapeText(a.usuario)}</td></tr>`).join('') || '<tr><td colspan="5">Sin aportes registrados.</td></tr>';
+            document.getElementById('partners-list').innerHTML=dash.rows.map((p,i)=>`<tr><td>${escapeText(p.nom)}</td><td>${escapeText(p.tel || '—')}</td><td>${p.count}</td><td>${agendaFmt(p.total)}</td><td style="min-width:120px"><b>${p.share}%</b><div class="dash-progress" style="margin:4px 0 0"><div style="width:${p.share}%;background:${PARTNER_COLORS[i%PARTNER_COLORS.length]}"></div></div></td><td>${escapeText(p.last || '—')}</td></tr>`).join('') || '<tr><td colspan="6">Sin socios registrados.</td></tr>';
+            const open=partnerUnlocked();
+            document.getElementById('contributions-list').innerHTML=entries.filter(a=>!filtered || a.socioId===filtered).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id)).map(a=>{
+                const edits=a.ediciones || [];
+                const trail=edits.map(e=>`${e.fecha.slice(0,10)} · ${e.usuario} · ${agendaFmt(e.montoAnterior)} → ${agendaFmt(e.montoNuevo)} · ${e.motivo}`).join('\n');
+                const mark=edits.length ? `<small class="kpi-sub" title="${escapeText(trail)}">✏️ Modificado ${edits.length} ${edits.length===1?'vez':'veces'} · original ${agendaFmt(edits[0].montoAnterior)}</small>` : '';
+                return `<tr><td>${escapeText(a.fecha)}</td><td>${escapeText(nameOf(a.socioId))}</td><td>${agendaFmt(a.monto)}${mark}</td><td>${escapeText(a.obs || '—')}</td><td>${escapeText(a.usuario)}</td><td><button type="button" class="btn btn-sm btn-sec" onclick="editContribution('${escapeText(a.id)}')">${open?'✏️':'🔒'} Editar monto</button></td></tr>`;
+            }).join('') || '<tr><td colspan="6">Sin aportes registrados.</td></tr>';
+            renderPartnerLockBar();
+            renderPartnerCharts(dash);
             applyPermissions();
         }
+        function lockPartners() {
+            partnerUnlockUntil=0; pendingEditId=null;
+            if(partnersVisible()) renderPartners();
+        }
+        function togglePartnerLock() {
+            if(!requireAction('partners')) return;
+            if(partnerUnlocked()) return lockPartners();
+            openPartnerLock(null);
+        }
+        function openPartnerLock(editId) {
+            pendingEditId=editId;
+            document.getElementById('plock-user').value=''; document.getElementById('plock-pass').value='';
+            document.getElementById('plock-msg').classList.add('hidden');
+            document.getElementById('modal-partner-lock').classList.remove('hidden'); document.body.style.overflow='hidden';
+            setTimeout(()=>document.getElementById('plock-user').focus(),50);
+        }
+        async function unlockPartners() {
+            const msg=document.getElementById('plock-msg'), btn=document.getElementById('plock-btn');
+            const fail=text=>{ msg.textContent=text; msg.classList.remove('hidden'); document.getElementById('plock-pass').value=''; };
+            if(Date.now()<partnerBlockUntil) return fail('Demasiados intentos. Espera '+Math.ceil((partnerBlockUntil-Date.now())/1000)+' segundos.');
+            if(!(window.crypto && crypto.subtle)) return fail('Este navegador no permite validar la contraseña. Abre el sistema con https.');
+            btn.disabled=true;
+            try {
+                const ok=await GycRules.verifyPartnerLock(document.getElementById('plock-user').value.trim(),document.getElementById('plock-pass').value,crypto.subtle);
+                if(!ok) {
+                    partnerFails++;
+                    if(partnerFails>=5) { partnerFails=0; partnerBlockUntil=Date.now()+60000; return fail('Demasiados intentos. Espera 60 segundos.'); }
+                    return fail('Usuario o contraseña incorrectos.');
+                }
+                partnerFails=0; partnerUnlockUntil=Date.now()+PARTNER_UNLOCK_MS;
+                const next=pendingEditId; pendingEditId=null;
+                document.getElementById('plock-pass').value=''; closeModal(); renderPartners();
+                if(next) editContribution(next);
+            } finally { btn.disabled=false; }
+        }
+        function editContribution(id) {
+            if(!requireAction('partners')) return;
+            const entry=(db.aportes || []).find(a=>a.id===id);
+            if(!entry) return alert('No se encontró este aporte.');
+            if(!partnerUnlocked()) return openPartnerLock(id);
+            pendingEditId=id;
+            const partner=(db.socios || []).find(p=>p.id===entry.socioId);
+            document.getElementById('pedit-info').innerHTML=`<b>${escapeText(partner?.nom || 'Socio no disponible')}</b><br>Aporte del ${escapeText(entry.fecha)} · monto actual <b>${agendaFmt(entry.monto)}</b>`;
+            document.getElementById('pedit-amount').value=entry.monto; document.getElementById('pedit-reason').value='';
+            document.getElementById('modal-partner-edit').classList.remove('hidden'); document.body.style.overflow='hidden';
+            setTimeout(()=>{ const f=document.getElementById('pedit-amount'); f.focus(); f.select(); },50);
+        }
+        function saveContributionEdit() {
+            if(!requireAction('partners')) return;
+            if(!partnerUnlocked()) { closeModal(); return alert('La edición se bloqueó. Vuelve a desbloquearla para continuar.'); }
+            const id=pendingEditId, entry=(db.aportes || []).find(a=>a.id===id);
+            const amount=Number(document.getElementById('pedit-amount').value), reason=document.getElementById('pedit-reason').value;
+            const updated=GycRules.applyContributionEdit(db.aportes || [],id,amount,reason,session.n || session.u,new Date().toISOString());
+            if(!updated) return alert('Escribe un monto mayor que cero y distinto al actual, y el motivo del cambio.');
+            const partner=(db.socios || []).find(p=>p.id===entry.socioId);
+            db.aportes=updated; pendingEditId=null;
+            log('Modificó aporte de '+(partner?.nom || 'socio')+': '+agendaFmt(entry.monto)+' → '+agendaFmt(Math.round(amount*100)/100)+' ('+reason.trim()+')');
+            save(); closeModal(); renderPartners();
+        }
+        setInterval(()=>{ if(partnerUnlockUntil && !partnerUnlocked()) lockPartners(); },15000);
         function addPartner() {
             if(!requireAction('partners')) return;
             const nom=document.getElementById('partner-name').value.trim(), tel=document.getElementById('partner-phone').value.trim();

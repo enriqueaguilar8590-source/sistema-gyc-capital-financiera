@@ -68,5 +68,52 @@
         });
         return {rows, total: Math.round(rows.reduce((sum,p) => sum+p.total,0)*100)/100};
     }
-    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport};
+    const round2 = n => Math.round(Number(n)*100)/100;
+    function addMonths(month, n) {
+        const [y, m] = month.split('-').map(Number), d = new Date(y, m-1+n, 1);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    }
+    function monthlyContributions(contributions, endMonth, count) {
+        const totals = {};
+        contributions.forEach(a => { const k = String(a.fecha || '').slice(0,7); if(k) { totals[k] = totals[k] || {total:0,count:0}; totals[k].total += Number(a.monto) || 0; totals[k].count++; } });
+        const months = [];
+        for(let i = count-1; i >= 0; i--) { const k = addMonths(endMonth, -i), t = totals[k] || {total:0,count:0}; months.push({month:k,total:round2(t.total),count:t.count}); }
+        return months;
+    }
+    function partnerDashboard(partners, contributions) {
+        const known = new Set(partners.map(p => p.id));
+        const valid = contributions.filter(a => known.has(a.socioId));
+        const report = partnerReport(partners, valid);
+        const rows = report.rows.map(p => {
+            const dates = valid.filter(a => a.socioId === p.id).map(a => a.fecha).sort();
+            return {...p, share: report.total > 0 ? Math.round(p.total/report.total*1000)/10 : 0, last: dates[dates.length-1] || ''};
+        }).sort((a,b) => b.total-a.total || String(a.nom).localeCompare(String(b.nom)));
+        const dates = valid.map(a => a.fecha).sort();
+        const largest = valid.reduce((best,a) => !best || Number(a.monto) > Number(best.monto) ? a : best, null);
+        return {rows, total: report.total, partners: partners.length, count: valid.length, average: valid.length ? round2(report.total/valid.length) : 0, largest, lastDate: dates[dates.length-1] || '', edited: valid.filter(a => (a.ediciones || []).length).length};
+    }
+    // Editing a contribution amount: needs a different amount > 0 and a written reason; the previous amount is kept as history.
+    function validContributionEdit(entry, amount, reason) {
+        const n = Number(amount);
+        return !!entry && Number.isFinite(n) && n > 0 && round2(n) !== round2(entry.monto) && String(reason || '').trim().length >= 3;
+    }
+    function applyContributionEdit(contributions, id, amount, reason, user, stamp) {
+        const entry = contributions.find(a => a.id === id);
+        if(!validContributionEdit(entry, amount, reason)) return null;
+        const edit = {fecha: stamp, usuario: user, montoAnterior: round2(entry.monto), montoNuevo: round2(amount), motivo: String(reason).trim()};
+        return contributions.map(a => a.id === id ? {...a, monto: edit.montoNuevo, ediciones: [...(a.ediciones || []), edit]} : a);
+    }
+    // Access lock for editing contributed capital. Only a salted PBKDF2 hash is stored, never the password itself.
+    const PARTNER_LOCK = {user:'SociosGYL', salt:'e93149786d46e9feb07fbbb88db39446', iterations:210000, hash:'07a3608cffb4ae31e040afa2192f049b241ceaba94170a1e70168af272447387'};
+    const utf8 = text => Uint8Array.from(unescape(encodeURIComponent(String(text))), c => c.charCodeAt(0));
+    async function partnerLockDigest(user, password, subtle) {
+        const key = await subtle.importKey('raw', utf8(password), 'PBKDF2', false, ['deriveBits']);
+        const bits = await subtle.deriveBits({name:'PBKDF2', hash:'SHA-256', salt: utf8(PARTNER_LOCK.salt+':'+user), iterations: PARTNER_LOCK.iterations}, key, 256);
+        return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+    async function verifyPartnerLock(user, password, subtle) {
+        const digest = await partnerLockDigest(PARTNER_LOCK.user, password, subtle);
+        return String(user) === PARTNER_LOCK.user && digest === PARTNER_LOCK.hash;
+    }
+    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

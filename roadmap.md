@@ -1,6 +1,6 @@
 # Cambios solicitados
 - [ ] Buscadores independientes en clientes, créditos y mora, con acceso rápido al pago.
-- [ ] Socios con registro e historial de aportes de capital, sincronizados y protegidos por permisos.
+- [x] Socios con registro e historial de aportes de capital, dashboard, y edición de montos protegida con usuario y contraseña propios.
 - [ ] Verificar búsquedas, pagos y registro de aportes.
 - [ ] Permisos de administrador, desembolsador, cobrador y asistente, protegidos en la nube.
 - [ ] Eliminar usuarios inhabilitados conservando cobros e historial.
