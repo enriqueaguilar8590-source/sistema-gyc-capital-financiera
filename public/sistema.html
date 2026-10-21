@@ -175,6 +175,10 @@
             box-shadow: 0 14px 40px rgba(0,0,0,.45);
         }
         .login-sheet h3 { font-size: 18px; margin-bottom: 14px; color: var(--primary-dark); }
+        .pass-wrap { position: relative; }
+        .pass-wrap input { width: 100%; padding-right: 2.7rem; }
+        .eye-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: 0; cursor: pointer; font-size: 17px; line-height: 1; opacity: .65; padding: 2px; }
+        .eye-btn:active { opacity: 1; }
         .welcome-version { position: relative; z-index: 2; margin-top: 26px; font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,.4); }
 
         /* --- LAYOUT ESTRUCTURAL RESPONSIVE --- */
@@ -610,7 +614,7 @@
                 <label>Usuario</label>
                 <input type="text" id="login-user" placeholder="Ej: admin" autocomplete="username" autocapitalize="none">
                 <label>Contraseña</label>
-                <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
+                <div class="pass-wrap"><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()"><button type="button" class="eye-btn" onclick="togglePass('login-pass',this)" aria-label="Mostrar u ocultar contraseña" title="Mostrar contraseña">👁</button></div>
                 <button class="btn btn-primary" onclick="handleLogin()" style="margin-top:4px;">INGRESAR AL SISTEMA</button>
                 <button class="btn btn-sec" onclick="hideLoginForm()" style="margin-top:8px;">VOLVER</button>
             </div>
@@ -851,7 +855,7 @@
                         <label>Nuevo Usuario</label>
                         <input type="text" id="u-nom" placeholder="Nombre Completo">
                         <input type="text" id="u-user" placeholder="Usuario de acceso">
-                        <input type="password" id="u-pass" placeholder="Contraseña">
+                        <div class="pass-wrap"><input type="password" id="u-pass" placeholder="Contraseña"><button type="button" class="eye-btn" onclick="togglePass('u-pass',this)" aria-label="Mostrar u ocultar contraseña" title="Mostrar contraseña">👁</button></div>
                         <select id="u-role">
                             <option value="admin">Administrador (Acceso total)</option>
                             <option value="desembolsador">Desembolsador (Clientes y créditos)</option>
@@ -1269,6 +1273,13 @@
         }
 
         // --- LOGIN ---
+        function togglePass(id, btn) {
+            const el = document.getElementById(id);
+            const show = el.type === 'password';
+            el.type = show ? 'text' : 'password';
+            btn.textContent = show ? '🙈' : '👁';
+            btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        }
         function handleLogin() {
             const u = document.getElementById('login-user').value, p = document.getElementById('login-pass').value;
             const user = db.users.find(x => x.u === u && x.p === p && x.s !== 'Inactivo');

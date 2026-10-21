@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 let rules: any;
-beforeAll(()=>{ const context=vm.createContext({}); vm.runInContext(readFileSync('public/gyc-rules.js','utf8'),context); rules=context.GycRules; });
+beforeAll(()=>{ const context=vm.createContext({}); vm.runInContext(readFileSync('public/gyc-rules.js','utf8'),context); rules=context["GycRules"]; });
 describe('requested permissions',()=>{
   it('administrator has full access',()=>expect(['collect','edit','users','createClient','createCredit'].every(a=>rules.can('admin',a))).toBe(true));
   it('disburser creates clients and credits but cannot collect or edit',()=>expect(['createClient','createCredit','collect','edit'].map(a=>rules.can('desembolsador',a))).toEqual([true,true,false,false]));
