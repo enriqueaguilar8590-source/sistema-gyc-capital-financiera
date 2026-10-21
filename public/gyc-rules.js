@@ -115,5 +115,44 @@
         const digest = await partnerLockDigest(PARTNER_LOCK.user, password, subtle);
         return String(user) === PARTNER_LOCK.user && digest === PARTNER_LOCK.hash;
     }
-    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    // ---- Avisos del día y SMS de pago ----
+    const plain = t => String(t == null ? '' : t).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\x20-\x7E\n]/g,'').replace(/\s+/g,' ').trim();
+    const money = n => 'C$' + (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    // Registered phone -> international number for SMS (Nicaragua +505 by default). '' when it is not a usable number.
+    function smsNumber(tel, country = '505') {
+        let d = String(tel || '').replace(/[^\d+]/g,'');
+        const plus = d.startsWith('+');
+        d = d.replace(/\D/g,'');
+        if(!plus && d.startsWith('00')) d = d.slice(2);
+        else if(!plus && d.length === 8) d = country + d;
+        else if(!plus && d.length === 10 && d.startsWith('0')) d = country + d.slice(2);
+        return d.length >= 10 && d.length <= 15 ? '+' + d : '';
+    }
+    // Plain GSM text (no accents) so each SMS carries 160 characters.
+    function paymentSms(p) {
+        const parts = [`${plain(p.empresa) || 'GYC Capital'}: ${plain(p.cliente).split(' ').slice(0,2).join(' ')}, recibimos su pago de ${money(p.monto)} el ${plain(p.fecha)}.`];
+        if(Number(p.mora) > 0) parts.push(`Incluye mora ${money(p.mora)}.`);
+        parts.push(Number(p.saldo) > 0.005 ? `Saldo pendiente: ${money(p.saldo)}.` : 'Su credito quedo cancelado. Gracias!');
+        parts.push(`Recibo ${plain(p.recibo)}.`);
+        return parts.join(' ');
+    }
+    function smsLink(number, text, ios) {
+        return `sms:${number}${ios ? '&' : '?'}body=${encodeURIComponent(text)}`;
+    }
+    // Daily digest: today's installments, overdue clients and accumulated mora.
+    function digestText(d) {
+        const names = list => list.slice(0,3).map(x => plain(x.nom).split(' ').slice(0,2).join(' ')).join(', ') + (list.length > 3 ? ` y ${list.length-3} mas` : '');
+        const lines = [];
+        lines.push(d.today.length ? `Hoy cobras ${d.today.length} ${d.today.length===1?'cuota':'cuotas'} por ${money(d.todayAmount)}` : 'Hoy no tienes cuotas por cobrar');
+        if(d.overdue.length) lines.push(`${d.overdue.length} ${d.overdue.length===1?'cliente en mora':'clientes en mora'}: cuotas vencidas ${money(d.overdueAmount)} + mora ${money(d.moraAmount)}`);
+        else lines.push('Sin clientes en mora');
+        if(d.overdue.length) lines.push('Mayor atraso: ' + names(d.overdue));
+        return {title: 'Cobros del dia', body: lines.join('\n'), lines};
+    }
+    // Notify once per day, at or after the chosen hour.
+    function shouldNotify(now, hour, lastDay) {
+        const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        return now.getHours() >= Number(hour) && lastDay !== key ? key : '';
+    }
+    root.GycRules = {smsNumber,paymentSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

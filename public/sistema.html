@@ -691,6 +691,19 @@
                     <div class="kpi" style="--kpi-accent:var(--danger)"><span>Créditos en mora</span><h3 id="d-cre-mora" style="color:var(--danger)">0</h3><small id="d-mora-amt" class="kpi-sub"></small></div>
                 </div>
 
+                <div class="card" id="avisos-card" style="border-left:4px solid var(--gold);">
+                    <div class="dash-row-head"><b>🔔 Avisos del día</b><small id="avisos-status"></small></div>
+                    <div id="avisos-body" style="font-size:13px; line-height:1.7;"></div>
+                    <div id="avisos-names" style="margin-top:6px;"></div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px;">
+                        <button type="button" class="btn btn-sm btn-primary" id="avisos-toggle" onclick="toggleAvisos()">ACTIVAR AVISOS</button>
+                        <button type="button" class="btn btn-sm btn-sec" onclick="sendAvisoNow()">ENVIAR AHORA</button>
+                        <label for="avisos-hour" style="margin:0;">Hora</label>
+                        <select id="avisos-hour" onchange="setAvisosHour(this.value)" style="width:auto; margin:0; padding:8px;"></select>
+                    </div>
+                    <small class="kpi-sub" id="avisos-help"></small>
+                </div>
+
                 <div class="card dash-today">
                     <div class="dash-row-head"><b>Cuotas de hoy</b><small id="dash-today-date"></small></div>
                     <div class="dash-progress"><div id="dash-today-bar"></div></div>
@@ -1113,6 +1126,7 @@
             <div id="print-thermal"></div>
             <div class="no-print" style="margin-top:20px; display: flex; flex-direction: column; gap: 10px;">
                 <button class="btn btn-primary" onclick="window.print()">🖨️ IMPRIMIR TICKET</button>
+                <button class="btn btn-sec" style="color: black;" id="rec-sms-btn" onclick="sendPaymentSms()">💬 ENVIAR SMS AL CLIENTE</button>
                 <button class="btn btn-sec" style="color: black;" onclick="closeModal()">CERRAR</button>
             </div>
         </div>
@@ -1570,6 +1584,7 @@
             document.getElementById('dash-mora-list').innerHTML = moraHtml || '<tr><td colspan="5" align="center">Sin mora pendiente actualmente</td></tr>';
 
             renderCharts(realCredits, realPagos);
+            renderAvisos();
         }
 
         function renderCharts(realCredits, realPagos) {
@@ -2108,8 +2123,96 @@
             save(); closeModal(); renderCre(); renderDash(); refreshReportIfOpen(); printThermal(p);
         }
 
+
+        // --- AVISOS DEL DÍA (notificaciones) Y SMS DE PAGO ---
+        const AVISOS_KEY = 'gyc_avisos';
+        const avisosCfg = () => { try { return {on:false, hour:8, last:'', ...(JSON.parse(localStorage.getItem(AVISOS_KEY) || '{}'))}; } catch(e) { return {on:false, hour:8, last:''}; } };
+        const avisosSave = c => { try { localStorage.setItem(AVISOS_KEY, JSON.stringify(c)); } catch(e) {} };
+        const canNotify = () => typeof Notification !== 'undefined';
+        function buildDigest() {
+            const today = getTodayCalendar();
+            const todayItems = agendaItemsBetween(today, today).filter(i => !i.pagada);
+            const overdue = [];
+            agendaCredits().forEach(c => {
+                const sum = getArrearsSummary(c, today);
+                if(sum.overdueCount > 0) overdue.push({nom: db.cli.find(x => x.id === c.cliId)?.nom || 'Cliente', overdueAmount: sum.overdueAmount, moraAmount: sum.moraAmount, total: sum.totalArrears});
+            });
+            overdue.sort((a, b) => b.total - a.total);
+            return {
+                today: todayItems.map(i => ({nom: i.cli?.nom || 'Cliente', pend: i.pend})),
+                todayAmount: todayItems.reduce((a, i) => a + i.pend, 0),
+                overdue,
+                overdueAmount: overdue.reduce((a, r) => a + r.overdueAmount, 0),
+                moraAmount: overdue.reduce((a, r) => a + r.moraAmount, 0)
+            };
+        }
+        function renderAvisos() {
+            const box = document.getElementById('avisos-body'); if(!box) return;
+            const d = buildDigest(), cfg = avisosCfg();
+            const lines = GycRules.digestText(d).lines;
+            box.innerHTML = lines.map(l => `<div>${escapeText(l)}</div>`).join('');
+            document.getElementById('avisos-names').innerHTML = d.overdue.slice(0, 5).map(r => `<div class="dash-item"><span>${escapeText(r.nom)}</span><b style="color:var(--danger)">${agendaFmt(r.total)}</b></div>`).join('');
+            const hourSel = document.getElementById('avisos-hour');
+            if(!hourSel.options.length) hourSel.innerHTML = Array.from({length: 17}, (_, i) => i + 5).map(h => `<option value="${h}">${h <= 12 ? h : h - 12}:00 ${h < 12 ? 'AM' : 'PM'}</option>`).join('');
+            hourSel.value = String(cfg.hour);
+            const granted = canNotify() && Notification.permission === 'granted';
+            const denied = canNotify() && Notification.permission === 'denied';
+            document.getElementById('avisos-toggle').textContent = cfg.on && granted ? 'DESACTIVAR AVISOS' : 'ACTIVAR AVISOS';
+            document.getElementById('avisos-status').textContent = cfg.on && granted ? `Activos · ${hourSel.options[hourSel.selectedIndex]?.text || ''}` : 'Desactivados';
+            document.getElementById('avisos-help').textContent = !canNotify() ? 'Este navegador no permite notificaciones. En iPhone, agrega el sistema a la pantalla de inicio (Compartir → Agregar a inicio) y ábrelo desde ahí.'
+                : denied ? 'Las notificaciones están bloqueadas en este dispositivo. Actívalas en los ajustes del navegador o de la app.'
+                : 'El aviso llega una vez al día, a la hora elegida, mientras la app esté abierta o instalada en el celular.';
+        }
+        async function showAviso(title, body) {
+            try {
+                const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+                if(reg) return await reg.showNotification(title, {body, icon: '/icon-192.png', badge: '/icon-192.png', tag: 'gyc-cobros'});
+            } catch(e) {}
+            try { new Notification(title, {body, icon: '/icon-192.png', tag: 'gyc-cobros'}); } catch(e) {}
+        }
+        async function toggleAvisos() {
+            const cfg = avisosCfg();
+            if(cfg.on && canNotify() && Notification.permission === 'granted') { cfg.on = false; avisosSave(cfg); return renderAvisos(); }
+            if(!canNotify()) return alert('Este navegador no permite notificaciones. En iPhone, agrega el sistema a la pantalla de inicio y ábrelo desde ahí.');
+            const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+            if(perm !== 'granted') { renderAvisos(); return alert('Para recibir avisos debes permitir las notificaciones.'); }
+            cfg.on = true; avisosSave(cfg); renderAvisos(); sendAvisoNow();
+        }
+        function setAvisosHour(h) { const cfg = avisosCfg(); cfg.hour = Number(h); cfg.last = ''; avisosSave(cfg); renderAvisos(); checkAvisos(); }
+        function sendAvisoNow() {
+            const msg = GycRules.digestText(buildDigest());
+            if(canNotify() && Notification.permission === 'granted') showAviso(msg.title, msg.body);
+            else alert(msg.title + '\n\n' + msg.body);
+        }
+        function checkAvisos() {
+            const cfg = avisosCfg();
+            if(!session || !cfg.on || !canNotify() || Notification.permission !== 'granted') return;
+            const key = GycRules.shouldNotify(new Date(), cfg.hour, cfg.last);
+            if(!key) return;
+            cfg.last = key; avisosSave(cfg);
+            const msg = GycRules.digestText(buildDigest());
+            showAviso(msg.title, msg.body);
+        }
+        setInterval(checkAvisos, 60000);
+        setTimeout(checkAvisos, 3000);
+        if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+        function sendPaymentSms() {
+            const p = window.__recPay;
+            if(!p) return;
+            if(!requireAction('collect')) return;
+            const cli = db.cli.find(x => x.id === p.cid);
+            const number = GycRules.smsNumber(cli?.tel);
+            if(!number) return alert('El cliente no tiene un teléfono válido registrado. Edita el cliente y escribe su número (8 dígitos).');
+            const text = GycRules.paymentSms({empresa: db.cfg.name, cliente: p.nom, monto: p.t, fecha: (p.fechaISO || '').split('-').reverse().join('/') || p.f, mora: p.m, saldo: p.sq, recibo: p.id});
+            if(!confirm('Se abrirá tu app de mensajes con este SMS para ' + number + ':\n\n' + text)) return;
+            log('Abrió SMS de pago ' + p.id + ' para ' + number);
+            location.href = GycRules.smsLink(number, text, /iPhone|iPad|iPod/.test(navigator.userAgent));
+        }
+
         // --- RECIBO ---
         function printThermal(p) {
+            window.__recPay = p;
             const c = db.cre.find(x => x.id === p.creId);
             document.getElementById('print-thermal').innerHTML = `
                 <center>
