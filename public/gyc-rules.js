@@ -136,6 +136,15 @@
         parts.push(`Recibo ${plain(p.recibo)}.`);
         return parts.join(' ');
     }
+    // Reminder SMS for a client: kind 'hoy' (installment due today) or 'mora' (overdue).
+    function reminderSms(r) {
+        const who = plain(r.cliente).split(' ')[0], company = plain(r.empresa) || 'GYC Capital', ref = plain(r.creId);
+        if(r.kind === 'mora') {
+            const n = Number(r.cuotas) || 1;
+            return `${company}: ${who}, su credito ${ref} tiene ${n} ${n===1?'cuota vencida':'cuotas vencidas'} por ${money(r.vencido)}` + (Number(r.mora) > 0 ? ` mas mora ${money(r.mora)}` : '') + `. Total a pagar: ${money(r.total)}. Por favor comuniquese para ponerse al dia.`;
+        }
+        return `${company}: ${who}, le recordamos que hoy vence su cuota de ${money(r.monto)} del credito ${ref}. Gracias por su pago puntual.`;
+    }
     function smsLink(number, text, ios) {
         return `sms:${number}${ios ? '&' : '?'}body=${encodeURIComponent(text)}`;
     }
@@ -154,5 +163,5 @@
         const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         return now.getHours() >= Number(hour) && lastDay !== key ? key : '';
     }
-    root.GycRules = {smsNumber,paymentSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

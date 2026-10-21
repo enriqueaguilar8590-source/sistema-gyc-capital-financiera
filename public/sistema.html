@@ -694,7 +694,11 @@
                 <div class="card" id="avisos-card" style="border-left:4px solid var(--gold);">
                     <div class="dash-row-head"><b>🔔 Avisos del día</b><small id="avisos-status"></small></div>
                     <div id="avisos-body" style="font-size:13px; line-height:1.7;"></div>
-                    <div id="avisos-names" style="margin-top:6px;"></div>
+                    <details id="avisos-sms" style="margin-top:10px;">
+                        <summary style="cursor:pointer; font-weight:700; font-size:13px; color:var(--primary);" id="avisos-sms-sum">💬 Recordatorios por SMS</summary>
+                        <div id="avisos-names" style="margin-top:6px;"></div>
+                    </details>
+                    <label style="display:flex; gap:8px; align-items:center; margin:12px 0 0; text-transform:none; font-size:12px; font-weight:600;"><input type="checkbox" id="sms-auto" onchange="setSmsAuto(this.checked)" style="width:auto; margin:0;"> Abrir el SMS automáticamente después de cada cobro</label>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px;">
                         <button type="button" class="btn btn-sm btn-primary" id="avisos-toggle" onclick="toggleAvisos()">ACTIVAR AVISOS</button>
                         <button type="button" class="btn btn-sm btn-sec" onclick="sendAvisoNow()">ENVIAR AHORA</button>
@@ -2121,6 +2125,7 @@
             db.pag.push(p);
             log(`Cobro ${recId}: C$ ${p.t} (Ref: ${c.id})` + (p.f !== p.fReg ? ` · fecha de pago ${p.f}` : '') + (p.dis > 0 ? ` · DISPENSA DE MORA C$ ${p.dis.toFixed(2)}` : ''));
             save(); closeModal(); renderCre(); renderDash(); refreshReportIfOpen(); printThermal(p);
+            if(smsAutoOn() && !(c && c.esPrueba)) sendPaymentSms(true);
         }
 
 
@@ -2135,11 +2140,11 @@
             const overdue = [];
             agendaCredits().forEach(c => {
                 const sum = getArrearsSummary(c, today);
-                if(sum.overdueCount > 0) overdue.push({nom: db.cli.find(x => x.id === c.cliId)?.nom || 'Cliente', overdueAmount: sum.overdueAmount, moraAmount: sum.moraAmount, total: sum.totalArrears});
+                if(sum.overdueCount > 0) { const cl = db.cli.find(x => x.id === c.cliId); overdue.push({nom: cl?.nom || 'Cliente', tel: cl?.tel || '', creId: c.id, cuotas: sum.overdueCount, dias: Math.max(...sum.overdueItems.map(o => o.daysLate)), overdueAmount: sum.overdueAmount, moraAmount: sum.moraAmount, total: sum.totalArrears}); }
             });
             overdue.sort((a, b) => b.total - a.total);
             return {
-                today: todayItems.map(i => ({nom: i.cli?.nom || 'Cliente', pend: i.pend})),
+                today: todayItems.map(i => ({nom: i.cli?.nom || 'Cliente', tel: i.cli?.tel || '', creId: i.c.id, n: i.s.n, pend: i.pend})),
                 todayAmount: todayItems.reduce((a, i) => a + i.pend, 0),
                 overdue,
                 overdueAmount: overdue.reduce((a, r) => a + r.overdueAmount, 0),
@@ -2151,7 +2156,18 @@
             const d = buildDigest(), cfg = avisosCfg();
             const lines = GycRules.digestText(d).lines;
             box.innerHTML = lines.map(l => `<div>${escapeText(l)}</div>`).join('');
-            document.getElementById('avisos-names').innerHTML = d.overdue.slice(0, 5).map(r => `<div class="dash-item"><span>${escapeText(r.nom)}</span><b style="color:var(--danger)">${agendaFmt(r.total)}</b></div>`).join('');
+            window.__digest = d;
+            const sent = smsSentToday();
+            const row = (kind, r, i, amount, color) => {
+                const key = kind + ':' + r.creId, ok = !!GycRules.smsNumber(r.tel), done = sent.includes(key);
+                return `<div class="dash-item"><span>${escapeText(r.nom)}<br><small style="color:var(--text-muted)">${escapeText(r.creId)}${ok ? '' : ' · sin teléfono válido'}</small></span><span style="display:flex; gap:8px; align-items:center;"><b style="color:${color}">${agendaFmt(amount)}</b><button type="button" class="btn btn-sm ${done ? 'btn-sec' : 'btn-primary'}" ${ok ? '' : 'disabled'} onclick="sendReminderSms('${kind}',${i})">${done ? '✔ Enviado' : '💬 SMS'}</button></span></div>`;
+            };
+            document.getElementById('avisos-names').innerHTML =
+                (d.today.length ? '<div class="dash-section" style="margin:6px 0">Vencen hoy</div>' + d.today.map((r, i) => row('hoy', r, i, r.pend, 'var(--text-main)')).join('') : '')
+                + (d.overdue.length ? '<div class="dash-section" style="margin:12px 0 6px">En mora</div>' + d.overdue.map((r, i) => row('mora', r, i, r.total, 'var(--danger)')).join('') : '')
+                || '<p style="color:var(--text-muted); font-size:12px;">No hay clientes para recordar hoy.</p>';
+            document.getElementById('avisos-sms-sum').textContent = `💬 Recordatorios por SMS (${d.today.length + d.overdue.length})`;
+            document.getElementById('sms-auto').checked = smsAutoOn();
             const hourSel = document.getElementById('avisos-hour');
             if(!hourSel.options.length) hourSel.innerHTML = Array.from({length: 17}, (_, i) => i + 5).map(h => `<option value="${h}">${h <= 12 ? h : h - 12}:00 ${h < 12 ? 'AM' : 'PM'}</option>`).join('');
             hourSel.value = String(cfg.hour);
@@ -2197,17 +2213,39 @@
         setTimeout(checkAvisos, 3000);
         if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
-        function sendPaymentSms() {
+        const SMS_AUTO_KEY = 'gyc_sms_auto', SMS_SENT_KEY = 'gyc_sms_sent';
+        const smsAutoOn = () => { try { return localStorage.getItem(SMS_AUTO_KEY) !== 'no'; } catch(e) { return true; } };
+        function setSmsAuto(on) { try { localStorage.setItem(SMS_AUTO_KEY, on ? 'si' : 'no'); } catch(e) {} }
+        function smsSentToday() {
+            try { const v = JSON.parse(localStorage.getItem(SMS_SENT_KEY) || '{}'); return v.day === toDateKey(getTodayCalendar()) ? (v.keys || []) : []; } catch(e) { return []; }
+        }
+        function markSmsSent(key) {
+            try { localStorage.setItem(SMS_SENT_KEY, JSON.stringify({day: toDateKey(getTodayCalendar()), keys: [...new Set([...smsSentToday(), key])]})); } catch(e) {}
+        }
+        const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+        function sendReminderSms(kind, i) {
+            if(!requireAction('collect')) return;
+            const r = (kind === 'hoy' ? window.__digest?.today : window.__digest?.overdue)?.[i];
+            if(!r) return;
+            const number = GycRules.smsNumber(r.tel);
+            if(!number) return alert('Este cliente no tiene un teléfono válido registrado.');
+            const text = GycRules.reminderSms({kind, empresa: db.cfg.name, cliente: r.nom, creId: r.creId, monto: r.pend, cuotas: r.cuotas, vencido: r.overdueAmount, mora: r.moraAmount, total: r.total});
+            markSmsSent(kind + ':' + r.creId);
+            log('Abrió SMS de recordatorio (' + kind + ') ' + r.creId + ' para ' + number);
+            renderAvisos();
+            location.href = GycRules.smsLink(number, text, isIOS());
+        }
+        function sendPaymentSms(auto) {
             const p = window.__recPay;
             if(!p) return;
             if(!requireAction('collect')) return;
             const cli = db.cli.find(x => x.id === p.cid);
             const number = GycRules.smsNumber(cli?.tel);
-            if(!number) return alert('El cliente no tiene un teléfono válido registrado. Edita el cliente y escribe su número (8 dígitos).');
+            if(!number) return auto === true ? undefined : alert('El cliente no tiene un teléfono válido registrado. Edita el cliente y escribe su número (8 dígitos).');
             const text = GycRules.paymentSms({empresa: db.cfg.name, cliente: p.nom, monto: p.t, fecha: (p.fechaISO || '').split('-').reverse().join('/') || p.f, mora: p.m, saldo: p.sq, recibo: p.id});
-            if(!confirm('Se abrirá tu app de mensajes con este SMS para ' + number + ':\n\n' + text)) return;
+            if(auto !== true && !confirm('Se abrirá tu app de mensajes con este SMS para ' + number + ':\n\n' + text)) return;
             log('Abrió SMS de pago ' + p.id + ' para ' + number);
-            location.href = GycRules.smsLink(number, text, /iPhone|iPad|iPod/.test(navigator.userAgent));
+            location.href = GycRules.smsLink(number, text, isIOS());
         }
 
         // --- RECIBO ---
