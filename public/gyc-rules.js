@@ -46,5 +46,27 @@
         for(let k = from; k <= to; k = addDays(k, 1)) days.push({date:k,total:totals[k] || 0});
         return days;
     }
-    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries};
+    function matches(query, ...values) {
+        const clean = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+        const words = clean(query).split(/\s+/).filter(Boolean);
+        const text = values.map(clean).join(' ');
+        return words.every(word => text.includes(word));
+    }
+    function creditSearch(db, query) {
+        return (db.cre || []).filter(c => {
+            const cli = (db.cli || []).find(x => x.id === c.cliId) || {};
+            return matches(query, c.id, cli.id, cli.nom, cli.ced, cli.tel);
+        });
+    }
+    function validContribution(partners, partnerId, amount, date, today) {
+        return partners.some(p => p.id === partnerId) && Number.isFinite(Number(amount)) && Number(amount) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && dateKey(date) === date && date <= today && !Number.isNaN(Date.parse(date+'T12:00:00')) && new Date(date+'T12:00:00').getDate() === Number(date.slice(-2));
+    }
+    function partnerReport(partners, contributions) {
+        const rows = partners.map(p => {
+            const entries = contributions.filter(a => a.socioId === p.id);
+            return {...p, total: Math.round(entries.reduce((sum,a) => sum + Number(a.monto),0)*100)/100, count: entries.length};
+        });
+        return {rows, total: Math.round(rows.reduce((sum,p) => sum+p.total,0)*100)/100};
+    }
+    root.GycRules = {normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport};
 })(globalThis);

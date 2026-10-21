@@ -22,3 +22,11 @@ describe('dashboard daily series',()=>{
   it('lists every day, adding zero for days without payments',()=>expect(rules.dailySeries(db,'2026-10-19','2026-10-22').map((x:any)=>x.total)).toEqual([80,0,105,0]));
   it('daily series respects the collector filter',()=>expect(rules.dailySeries(db,'2026-10-19','2026-10-21','Luis').map((x:any)=>x.total)).toEqual([50,0,0]));
 });
+describe('independent searches and partner capital',()=>{
+  const db={cli:[{id:'CLI1',nom:'María Aguilar',ced:'001'},{id:'CLI2',nom:'Ana López'}],cre:[{id:'CRE1',cliId:'CLI1'},{id:'CRE2',cliId:'CLI1'},{id:'CRE3',cliId:'CLI2'}]};
+  it('searches credits by client name, including all her credits',()=>expect(rules.creditSearch(db,'maria aguilar').map((c:any)=>c.id)).toEqual(['CRE1','CRE2']));
+  it('searches credit number without affecting client matching',()=>{expect(rules.creditSearch(db,'CRE3').map((c:any)=>c.id)).toEqual(['CRE3']);expect(rules.matches('Ana','María Aguilar')).toBe(false);});
+  it('sums each partner capital independently',()=>{const r=rules.partnerReport([{id:'s1'},{id:'s2'}],[{socioId:'s1',monto:1000},{socioId:'s1',monto:500},{socioId:'s2',monto:200}]);expect(r.rows.map((p:any)=>p.total)).toEqual([1500,200]);expect(r.total).toBe(1700);});
+  it('only administrators can record partners or contributions',()=>expect(['owner','admin','desembolsador','cobrador','asistente'].map(r=>rules.can(r,'partners'))).toEqual([true,true,false,false,false]));
+  it('contributions require an existing partner, positive capital and a real nonfuture date',()=>{const p=[{id:'s1'}];expect(rules.validContribution(p,'s1',100,'2026-10-21','2026-10-21')).toBe(true);expect([rules.validContribution(p,'other',100,'2026-10-21','2026-10-21'),rules.validContribution(p,'s1',0,'2026-10-21','2026-10-21'),rules.validContribution(p,'s1',100,'2026-10-22','2026-10-21'),rules.validContribution(p,'s1',100,'2026-02-30','2026-10-21')]).toEqual([false,false,false,false]);});
+});
