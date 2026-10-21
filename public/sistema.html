@@ -644,6 +644,7 @@
             <button class="nav-btn" onclick="tab('sect-cli', this)"><i>👥</i><span>Clientes</span></button>
             <button class="nav-btn" onclick="tab('sect-cre', this)"><i>💳</i><span>Créditos</span></button>
             <button class="nav-btn" onclick="tab('sect-socios', this)"><i>🤝</i><span>Socios</span></button>
+            <button class="nav-btn" id="nav-conta" onclick="tab('sect-conta', this)"><i>📒</i><span>Contab.</span></button>
             <button class="nav-btn" onclick="tab('sect-arqueo', this)"><i>🧮</i><span>Arqueo</span></button>
             <button class="nav-btn" onclick="tab('sect-rep', this)"><i>📑</i><span>Reportes</span></button>
             <button class="nav-btn" onclick="tab('sect-agenda', this); renderAgenda();"><i>🗓️</i><span>Agenda</span></button>
@@ -884,6 +885,57 @@
                 <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Capital aportado</th><th>Referencia / observación</th><th>Registrado por</th><th></th></tr></thead><tbody id="contributions-list"></tbody></table></div>
             </section>
 
+            <section id="sect-conta" class="hidden">
+                <div class="dash-head"><div><h2 class="cash-title" style="margin-bottom:2px">Contabilidad</h2><small>Utilidad real, movimientos y balance</small></div></div>
+                <div class="tab-group" id="conta-tabs">
+                    <div class="tab-item active" onclick="setContaPeriod('mes', this)">MES</div>
+                    <div class="tab-item" onclick="setContaPeriod('anio', this)">AÑO</div>
+                    <div class="tab-item" onclick="setContaPeriod('semana', this)">SEMANA</div>
+                    <div class="tab-item" onclick="contaCustomRange()">RANGO</div>
+                </div>
+                <div class="cash-filters">
+                    <div><label>Desde</label><input id="conta-from" type="date" onchange="contaCustomRange()"></div>
+                    <div><label>Hasta</label><input id="conta-to" type="date" onchange="contaCustomRange()"></div>
+                </div>
+                <div id="conta-kpis" class="kpi-grid dash-kpis"></div>
+                <p style="font-size:11px; color:var(--text-muted); margin:-4px 0 14px;">Utilidad real = intereses y mora efectivamente cobrados + otros ingresos − gastos. El capital que recuperas de los créditos no es ganancia, y los retiros de socios no son gasto: bajan el patrimonio.</p>
+
+                <div class="charts-grid">
+                    <div class="card">
+                        <div class="dash-row-head"><label>Ingresos vs gastos por mes</label><small>últimos 6 meses</small></div>
+                        <div class="chart-container"><canvas id="chart-conta-month"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="dash-row-head"><label>Gastos por categoría</label><small id="conta-cat-note"></small></div>
+                        <div class="chart-container" id="conta-cat-wrap"><canvas id="chart-conta-cat"></canvas></div>
+                        <div id="conta-cat-empty" class="hidden" style="padding:60px 10px;text-align:center;color:var(--text-muted);font-size:13px;">Sin gastos en este período.</div>
+                    </div>
+                </div>
+
+                <h4 class="dash-section">Balance a hoy</h4>
+                <div id="conta-balance" class="card"></div>
+
+                <h4 class="dash-section">Registrar movimiento</h4>
+                <form id="conta-form" class="card" onsubmit="event.preventDefault(); addAccountingEntry()">
+                    <div class="grid-2">
+                        <div><label for="conta-tipo">Tipo</label><select id="conta-tipo" onchange="contaFormSync()"></select></div>
+                        <div><label for="conta-fecha">Fecha</label><input id="conta-fecha" type="date" required></div>
+                    </div>
+                    <div class="grid-2">
+                        <div><label for="conta-monto">Monto (C$)</label><input id="conta-monto" type="number" min="0.01" step="0.01" required></div>
+                        <div id="conta-cat-box"><label for="conta-cat">Categoría</label><select id="conta-cat"></select></div>
+                        <div id="conta-socio-box" class="hidden"><label for="conta-socio">Socio (opcional)</label><select id="conta-socio"></select></div>
+                    </div>
+                    <label for="conta-concepto">Concepto</label><input id="conta-concepto" maxlength="160" required placeholder="Ej.: pago de alquiler de octubre">
+                    <small id="conta-hint" class="kpi-sub" style="margin:-2px 0 10px;"></small>
+                    <button class="btn btn-primary" type="submit">+ REGISTRAR MOVIMIENTO</button>
+                </form>
+
+                <h3 class="cash-section">Movimientos del período</h3>
+                <label for="conta-filter">Tipo</label><select id="conta-filter" onchange="renderConta()"><option value="">Todos</option></select>
+                <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Registrado por</th><th></th></tr></thead><tbody id="conta-list"></tbody></table></div>
+            </section>
+
             <!-- AGENDA DE COBROS (NUEVO) -->
             <section id="sect-agenda" class="hidden">
                 <div class="tab-group" id="agenda-tabs">
@@ -1090,6 +1142,14 @@
         </div>
     </div>
 
+    <!-- MODAL: historial del cliente -->
+    <div id="modal-cli-hist" class="modal hidden">
+        <div class="modal-content" style="max-width:640px;">
+            <div id="cli-hist-body"></div>
+            <button class="btn btn-sec" style="margin-top:14px;" onclick="closeModal()">CERRAR</button>
+        </div>
+    </div>
+
     <!-- MODAL: acceso a edición de socios -->
     <div id="modal-partner-lock" class="modal hidden">
         <div class="modal-content" style="max-width:380px;">
@@ -1176,7 +1236,7 @@
             if(allowed(action)) return true;
             alert('Tu permiso no permite esta acción.'); return false;
         }
-        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners'};
+        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners',addAccountingEntry:'accounting',voidAccountingEntry:'accounting'};
         function applyPermissions() {
             document.querySelectorAll('[onclick],input[type=file]').forEach(el => {
                 const code = el.getAttribute('onclick') || el.getAttribute('onchange') || '';
@@ -1189,6 +1249,7 @@
                 if(action) { el.disabled = !allowed(action); el.title = el.disabled ? 'Sin permiso para esta acción' : ''; }
             });
             document.querySelectorAll('#adj-user input,#adj-user select,#adj-emp input,#adj-emp textarea,#adj-db input:not([type=file])').forEach(el=>el.disabled=!allowed('edit'));
+            document.getElementById('nav-conta')?.classList.toggle('hidden', !allowed('accounting'));
             document.querySelectorAll('#partner-form input,#contribution-form input,#contribution-form select,[data-partner-write]').forEach(el=>el.disabled=!allowed('partners'));
             document.getElementById('cre-refi').disabled = !allowed('edit');
             if(!allowed('edit')) document.getElementById('cre-refi').value = '';
@@ -1211,7 +1272,7 @@
             if(!db.trash) db.trash = []; if(!db.hist) db.hist = []; if(!db.cfg) db.cfg = {};
             if(!db.cfg.mora) db.cfg.mora = { activa: 'si', gracia: 0 };
             if(session) { const u = (db.users||[]).find(x => x.u === session.u); if(!u || u.s === 'Inactivo') { session=null; location.reload(); return; } session = u; }
-            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','renderCash','renderPartners','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
+            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','renderCash','renderPartners','renderConta','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
         };
         function log(acc) { if(!session || GycRules.normalize(cloudRole)==='asistente' || GycRules.normalize(session.r)==='asistente') return; db.hist.unshift({ u: session.u, n: session.n, f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), a: acc }); save(); }
 
@@ -1662,6 +1723,7 @@
             if(id === 'sect-cli') renderCli();
             if(id === 'sect-cre') renderCre();
             if(id === 'sect-socios') renderPartners();
+            if(id === 'sect-conta') { if(!allowed('accounting')) { alert('Solo el administrador puede ver la contabilidad.'); return tab('sect-dash', document.querySelector('.nav-btn')); } if(!document.getElementById('conta-from').value) setContaPeriod('mes'); else renderConta(); }
             if(id === 'sect-hist') renderHist();
             if(id === 'sect-rep') renderReport(currentReport, currentReportEl || document.querySelector('#sect-rep .tab-item'));
             if(id === 'sect-dash') renderDash();
@@ -1690,9 +1752,11 @@
                         <div>
                             <b style="color:var(--primary)">${c.id} - ${c.nom}</b><br>
                             <small>${c.ced} | 📞 ${c.tel}</small><br>
+                            ${ratingBadge(clientHist(c.id))}<br>
                             <p style="font-size:10px; margin-top:5px; color:var(--text-muted)">${c.gar ? 'Garantía: '+c.gar : ''}</p>
                         </div>
                         <div style="display:flex; flex-direction:column; gap:5px;">
+                            <button class="btn btn-sm btn-primary" onclick="openClientHistory('${c.id}')">HISTORIAL</button>
                             <button class="btn btn-sm btn-sec" onclick="openCliModal('${c.id}')">EDITAR</button>
                             <button class="btn btn-sm btn-danger" onclick="moveToTrash('cli', '${c.id}')">🗑️</button>
                         </div>
@@ -2663,6 +2727,165 @@
             if(!GycRules.validContribution(db.socios || [],socioId,monto,fecha,toDateKey(getTodayCalendar()))) return alert('Selecciona un socio, un monto mayor que cero y una fecha válida no posterior a hoy.');
             db.aportes=[...(db.aportes || []),{id:crypto.randomUUID(),socioId,monto:Math.round(monto*100)/100,fecha,obs:document.getElementById('contribution-note').value.trim(),usuario:session.n || session.u}];
             log('Registró aporte de capital: '+agendaFmt(monto)); save(); document.getElementById('contribution-form').reset(); renderPartners(); document.getElementById('contribution-partner').value=socioId;
+        }
+
+
+        // --- HISTORIAL DEL CLIENTE E ÍNDICE DE PAGO ---
+        const RATING_COLORS = {Buena: 'var(--primary)', Media: '#b8860b', Mala: 'var(--danger)', 'Sin historial': 'var(--text-muted)'};
+        const clientHist = id => GycRules.clientHistory(db, id, toDateKey(getTodayCalendar()), x => toDateKey(x));
+        function ratingBadge(h) {
+            const c = RATING_COLORS[h.rating];
+            return `<span style="display:inline-block; margin-top:4px; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:700; color:${c}; border:1px solid ${c};">${h.rating === 'Sin historial' ? 'Sin historial de pago' : 'Paga ' + h.rating.toLowerCase() + (h.score != null ? ' · ' + h.score + '%' : '')}</span> <small style="color:var(--text-muted)">${h.credits} ${h.credits === 1 ? 'crédito' : 'créditos'}</small>`;
+        }
+        function openClientHistory(id) {
+            const cli = db.cli.find(x => x.id === id); if(!cli) return;
+            const h = clientHist(id), c = RATING_COLORS[h.rating];
+            const kpi = (label, value, sub) => `<div class="kpi"><span>${label}</span><h3>${value}</h3>${sub ? `<small class="kpi-sub">${sub}</small>` : ''}</div>`;
+            document.getElementById('cli-hist-body').innerHTML = `
+                <h3 style="color:var(--primary); margin-bottom:2px;">${escapeText(cli.nom)}</h3>
+                <small style="color:var(--text-muted)">${escapeText(cli.id)} · ${escapeText(cli.ced || '')} · 📞 ${escapeText(cli.tel || '—')}</small>
+                <div class="card" style="margin-top:12px; border-left:4px solid ${c};">
+                    <div class="dash-row-head"><b>Índice de pago</b><b style="color:${c}; font-size:18px;">${h.rating === 'Sin historial' ? 'Sin historial' : h.rating + ' · ' + h.score + '%'}</b></div>
+                    <div class="dash-progress"><div style="width:${h.score || 0}%; background:${c}"></div></div>
+                    <small class="kpi-sub">${h.due ? `${h.ontime} cuotas a tiempo · ${h.late} pagadas con atraso · ${h.overdue} vencidas sin pagar${h.maxDays ? ' (hasta ' + h.maxDays + ' días)' : ''}` : 'Aún no hay cuotas vencidas para medir.'}</small>
+                    <small class="kpi-sub">Buena: 85% o más · Media: 60% a 84% · Mala: menos de 60% o más de 30 días vencida. Una cuota pagada con atraso cuenta como media; una vencida con deuda impide la calificación Buena.</small>
+                </div>
+                <div class="kpi-grid">
+                    ${kpi('Créditos trabajados', h.credits, `${h.active} activos · ${h.cancelled} cancelados`)}
+                    ${kpi('Capital prestado', agendaFmt(h.capital), h.first ? 'Desde ' + escapeText(h.first) : '')}
+                    ${kpi('Total pagado', agendaFmt(h.paid))}
+                    ${kpi('Saldo pendiente', agendaFmt(h.pending))}
+                    ${kpi('Intereses pagados', agendaFmt(h.interest))}
+                    ${kpi('Mora pagada', agendaFmt(h.mora))}
+                </div>
+                <div class="table-wrapper"><table><thead><tr><th>Crédito</th><th>Desembolso</th><th style="text-align:right">Capital</th><th style="text-align:right">Saldo</th><th>Cuotas</th><th>Estado</th></tr></thead><tbody>
+                ${h.rows.map(r => `<tr><td>${escapeText(r.id)}</td><td>${escapeText(r.fecha || '—')}</td><td style="text-align:right">${agendaFmt(r.cap)}</td><td style="text-align:right">${agendaFmt(r.saldo)}</td><td>✔${r.ontime} ⏱${r.late} ⚠${r.overdue}</td><td>${r.active ? (r.overdue ? '<span style="color:var(--danger)">En mora</span>' : 'Activo') : 'Cancelado'}</td></tr>`).join('') || '<tr><td colspan="6">Este cliente no tiene créditos.</td></tr>'}
+                </tbody></table></div>
+                <small class="kpi-sub">✔ a tiempo · ⏱ pagada con atraso · ⚠ vencida sin pagar. No incluye créditos de prueba.</small>`;
+            showModal('modal-cli-hist');
+        }
+
+        // --- CONTABILIDAD ---
+        let contaMonthChart = null, contaCatChart = null;
+        const CONTA_COLORS = ['#1a7f4b','#c9a54a','#3b82f6','#8b5cf6','#d64545','#0ea5a4','#f59e0b','#64748b','#84cc16','#ec4899'];
+        const CONTA_HINTS = {
+            gasto: 'Egreso operativo del negocio. Baja la utilidad.',
+            ingreso: 'Ingreso que no viene de cobros de créditos (comisiones, venta de un bien, etc.). Los intereses y la mora ya se suman solos al cobrar.',
+            retiro: 'Dinero que un socio o el dueño saca del negocio. No es gasto: baja el patrimonio.',
+            activo: 'Bien que compras para el negocio (equipo, moto, mobiliario). Sale de caja y queda como activo, sin depreciación.',
+            pasivo: 'Deuda que recibes (préstamo de un banco o tercero). Entra a caja y queda como pasivo.',
+            pago_pasivo: 'Abono o pago de una deuda registrada. Baja caja y baja el pasivo.',
+            capital: 'Capital propio inicial o ajuste. Los aportes de Socios ya se cuentan automáticamente, no los repitas aquí.'
+        };
+        function setContaPeriod(mode, el) {
+            document.querySelectorAll('#conta-tabs .tab-item').forEach(b => b.classList.remove('active'));
+            (el || document.querySelector('#conta-tabs .tab-item')).classList.add('active');
+            const [from, to] = GycRules.range(mode, toDateKey(getTodayCalendar()));
+            document.getElementById('conta-from').value = from; document.getElementById('conta-to').value = to;
+            renderConta();
+        }
+        function contaCustomRange() {
+            document.querySelectorAll('#conta-tabs .tab-item').forEach((b, i) => b.classList.toggle('active', i === 3));
+            renderConta();
+        }
+        function contaFormSync() {
+            const t = document.getElementById('conta-tipo').value;
+            document.getElementById('conta-cat-box').classList.toggle('hidden', t !== 'gasto');
+            document.getElementById('conta-socio-box').classList.toggle('hidden', t !== 'retiro');
+            document.getElementById('conta-hint').textContent = CONTA_HINTS[t] || '';
+        }
+        function renderConta() {
+            if(!allowed('accounting')) return;
+            const from = document.getElementById('conta-from').value, to = document.getElementById('conta-to').value;
+            if(!from || !to) return;
+            const today = toDateKey(getTodayCalendar());
+            const typeSel = document.getElementById('conta-tipo'), filterSel = document.getElementById('conta-filter');
+            if(!typeSel.options.length) {
+                typeSel.innerHTML = Object.entries(GycRules.ACC_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+                filterSel.innerHTML = '<option value="">Todos</option>' + Object.entries(GycRules.ACC_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+                document.getElementById('conta-cat').innerHTML = GycRules.EXPENSE_CATEGORIES.map(c => `<option>${escapeText(c)}</option>`).join('');
+                contaFormSync();
+            }
+            const soc = document.getElementById('conta-socio'), chosenSoc = soc.value;
+            soc.innerHTML = '<option value="">—</option>' + (db.socios || []).map(p => `<option value="${escapeText(p.id)}">${escapeText(p.nom)}</option>`).join(''); soc.value = chosenSoc;
+            const dateEl = document.getElementById('conta-fecha'); dateEl.max = today; if(!dateEl.value) dateEl.value = today;
+            if(from > to) { document.getElementById('conta-kpis').innerHTML = '<p>La fecha inicial debe ser anterior a la final.</p>'; return; }
+            const r = GycRules.accountingReport(db, from, to), b = GycRules.balanceSheet(db, today);
+            const kpi = (label, value, extra, accent) => `<div class="kpi" ${accent ? `style="--kpi-accent:${accent}"` : ''}><span>${label}</span><h3>${value}</h3>${extra ? `<small class="kpi-sub">${extra}</small>` : ''}</div>`;
+            document.getElementById('conta-kpis').innerHTML =
+                `<div class="kpi kpi-hero"><span>Utilidad neta real del período</span><h3>${agendaFmt(r.profit)}</h3><small class="hero-sub">Margen real ${r.margin}% sobre ${agendaFmt(r.income)} de ingresos</small></div>`
+                + kpi('Intereses cobrados', agendaFmt(r.interest))
+                + kpi('Mora cobrada', agendaFmt(r.mora), '', 'var(--gold)')
+                + kpi('Otros ingresos', agendaFmt(r.other), '', 'var(--info)')
+                + kpi('Gastos', agendaFmt(r.expenses), r.income > 0 ? Math.round(r.expenses / r.income * 100) + '% de los ingresos' : '', 'var(--danger)')
+                + kpi('Retiros de socios', agendaFmt(r.withdrawals), 'No afectan la utilidad', 'var(--text-muted)')
+                + kpi('Efectivo cobrado', agendaFmt(r.collected), 'Capital + intereses + mora');
+            const row = (label, value, strong) => `<div class="dash-item" style="${strong ? 'font-weight:800; border-top:2px solid var(--border);' : ''}"><span>${label}</span><span>${agendaFmt(value)}</span></div>`;
+            document.getElementById('conta-balance').innerHTML = `<div class="grid-2"><div>
+                <b style="color:var(--primary)">ACTIVOS</b>${row('Caja estimada', b.cash)}${row('Cartera (capital por cobrar)', b.portfolio)}${row('Activos fijos', b.fixed)}${row('Total activos', b.assets, true)}</div><div>
+                <b style="color:var(--danger)">PASIVOS</b>${row('Deudas pendientes', b.liabilities, true)}
+                <b style="color:var(--primary); display:block; margin-top:12px;">PATRIMONIO</b>${row('Capital aportado (socios + inicial)', b.contributed)}${row('Retiros', -b.withdrawals)}${row('Resultados acumulados', b.results)}${row('Total patrimonio', b.equity, true)}</div></div>
+                ${b.cash < 0 ? '<div class="card" style="border-left:4px solid var(--warning); margin:10px 0 0;"><small><b>La caja estimada sale negativa.</b> Seguramente falta registrar el capital con el que empezó el negocio. Regístralo como “Capital inicial / ajuste” (o como aporte en Socios) para que el balance cuadre con tu efectivo real.</small></div>' : ''}
+                <small class="kpi-sub">Activos − pasivos = patrimonio. La caja es una estimación calculada con los cobros, desembolsos y movimientos registrados; cuéntala contra el efectivo real para detectar diferencias. Sin depreciación ni intereses por cobrar.</small>`;
+            const entries = (db.conta || []).filter(e => e.fecha >= from && e.fecha <= to && (!filterSel.value || e.tipo === filterSel.value)).slice().sort((a, c) => c.fecha.localeCompare(a.fecha) || c.id.localeCompare(a.id));
+            const sign = {ingreso: 1, gasto: -1, retiro: -1, activo: -1, pasivo: 1, pago_pasivo: -1, capital: 1};
+            document.getElementById('conta-list').innerHTML = entries.map(e => {
+                const label = (GycRules.ACC_TYPES[e.tipo] || e.tipo) + (e.categoria ? `<br><small style="color:var(--text-muted)">${escapeText(e.categoria)}</small>` : '') + (e.socioId ? `<br><small style="color:var(--text-muted)">${escapeText((db.socios || []).find(p => p.id === e.socioId)?.nom || '')}</small>` : '');
+                const style = e.anulado ? 'text-decoration:line-through; opacity:.55;' : '';
+                return `<tr style="${style}"><td>${escapeText(e.fecha)}</td><td>${label}</td><td>${escapeText(e.concepto)}${e.anulado ? `<br><small>Anulado: ${escapeText(e.motivoAnulacion || '')}</small>` : ''}</td><td style="text-align:right; color:${sign[e.tipo] > 0 ? 'var(--primary)' : 'var(--danger)'}">${sign[e.tipo] > 0 ? '+' : '−'}${agendaFmt(e.monto)}</td><td>${escapeText(e.usuario || '')}</td><td>${e.anulado ? '' : `<button type="button" class="btn btn-sm btn-danger" onclick="voidAccountingEntry('${escapeText(e.id)}')">ANULAR</button>`}</td></tr>`;
+            }).join('') || '<tr><td colspan="6">Sin movimientos en este período.</td></tr>';
+            renderContaCharts(r);
+            applyPermissions();
+        }
+        function renderContaCharts(r) {
+            if(typeof Chart === 'undefined' || document.getElementById('sect-conta').classList.contains('hidden')) return;
+            const cs = getComputedStyle(document.documentElement);
+            const gridCol = cs.getPropertyValue('--border').trim() || '#e4ece7', txtCol = cs.getPropertyValue('--text-main').trim() || '#10261a';
+            Chart.defaults.color = cs.getPropertyValue('--text-muted').trim() || '#6b7f72';
+            const names = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+            const series = GycRules.monthlyAccounting(db, toDateKey(getTodayCalendar()).slice(0, 7), 6);
+            if(contaMonthChart) contaMonthChart.destroy();
+            contaMonthChart = new Chart(document.getElementById('chart-conta-month').getContext('2d'), {
+                type: 'bar',
+                data: {labels: series.map(x => names[Number(x.month.slice(5, 7)) - 1] + ' ' + x.month.slice(2, 4)), datasets: [
+                    {label: 'Ingresos', data: series.map(x => x.income), backgroundColor: '#1a7f4b', borderRadius: 6, maxBarThickness: 22},
+                    {label: 'Gastos', data: series.map(x => x.expenses), backgroundColor: '#d64545', borderRadius: 6, maxBarThickness: 22}]},
+                options: {maintainAspectRatio: false, responsive: true, plugins: {legend: {position: 'bottom', labels: {color: txtCol, font: {size: 11}}}, tooltip: {callbacks: {label: c => ' ' + c.dataset.label + ': ' + dashMoney(c.parsed.y)}}}, scales: {y: {beginAtZero: true, grid: {color: gridCol}}, x: {grid: {display: false}}}}
+            });
+            const cats = Object.entries(r.byCategory).sort((a, b) => b[1] - a[1]);
+            document.getElementById('conta-cat-wrap').classList.toggle('hidden', !cats.length);
+            document.getElementById('conta-cat-empty').classList.toggle('hidden', !!cats.length);
+            document.getElementById('conta-cat-note').textContent = cats.length ? agendaFmt(r.expenses) : '';
+            if(contaCatChart) { contaCatChart.destroy(); contaCatChart = null; }
+            if(!cats.length) return;
+            contaCatChart = new Chart(document.getElementById('chart-conta-cat').getContext('2d'), {
+                type: 'doughnut',
+                data: {labels: cats.map(c => c[0]), datasets: [{data: cats.map(c => c[1]), backgroundColor: cats.map((c, i) => CONTA_COLORS[i % CONTA_COLORS.length]), borderWidth: 0}]},
+                options: {maintainAspectRatio: false, responsive: true, plugins: {legend: {position: 'bottom', labels: {color: txtCol, font: {size: 11}}}, tooltip: {callbacks: {label: c => ' ' + c.label + ': ' + dashMoney(c.parsed)}}}}
+            });
+        }
+        function addAccountingEntry() {
+            if(!requireAction('accounting')) return;
+            const tipo = document.getElementById('conta-tipo').value;
+            const entry = {id: crypto.randomUUID(), tipo, fecha: document.getElementById('conta-fecha').value, monto: Math.round(Number(document.getElementById('conta-monto').value) * 100) / 100,
+                concepto: document.getElementById('conta-concepto').value.trim(), usuario: session.n || session.u};
+            if(tipo === 'gasto') entry.categoria = document.getElementById('conta-cat').value;
+            if(tipo === 'retiro' && document.getElementById('conta-socio').value) entry.socioId = document.getElementById('conta-socio').value;
+            if(!GycRules.validEntry(entry, db.socios || [], toDateKey(getTodayCalendar()))) return alert('Revisa el movimiento: monto mayor que cero, concepto y una fecha válida no posterior a hoy.');
+            db.conta = [...(db.conta || []), entry];
+            log('Contabilidad: ' + GycRules.ACC_TYPES[tipo] + ' ' + agendaFmt(entry.monto) + ' · ' + entry.concepto);
+            save(); document.getElementById('conta-monto').value = ''; document.getElementById('conta-concepto').value = '';
+            if(entry.fecha < document.getElementById('conta-from').value || entry.fecha > document.getElementById('conta-to').value) contaCustomRange();
+            renderConta();
+        }
+        function voidAccountingEntry(id) {
+            if(!requireAction('accounting')) return;
+            const e = (db.conta || []).find(x => x.id === id); if(!e || e.anulado) return;
+            const reason = (prompt('Motivo para anular este movimiento (queda guardado en el historial):') || '').trim();
+            if(reason.length < 3) return reason === '' ? undefined : alert('Escribe un motivo de al menos 3 letras.');
+            db.conta = db.conta.map(x => x.id === id ? {...x, anulado: true, motivoAnulacion: reason, anuladoPor: session.n || session.u, anuladoFecha: new Date().toISOString()} : x);
+            log('Contabilidad: anuló ' + GycRules.ACC_TYPES[e.tipo] + ' ' + agendaFmt(e.monto) + ' (' + reason + ')');
+            save(); renderConta();
         }
 
         // --- AGENDA DE COBROS (NUEVO: solo lectura, no modifica datos) ---

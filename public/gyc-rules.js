@@ -19,6 +19,7 @@
         const d = new Date(today+'T12:00:00'), start = new Date(d), end = new Date(d);
         if(mode === 'semana') { start.setDate(d.getDate()-((d.getDay()+6)%7)); end.setDate(start.getDate()+6); }
         if(mode === 'mes') { start.setDate(1); end.setMonth(d.getMonth()+1,0); }
+        if(mode === 'anio') { start.setMonth(0,1); end.setMonth(11,31); }
         const key = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
         return [key(start),key(end)];
     }
@@ -163,5 +164,78 @@
         const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         return now.getHours() >= Number(hour) && lastDay !== key ? key : '';
     }
-    root.GycRules = {smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    // ---- Historial del cliente e índice de pago ----
+    const daysBetween = (a, b) => Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00')) / 86400000);
+    const isPaidItem = s => Number(s.paid) >= Number(s.amount) - 0.005 || s.status === 'Pagado';
+    // toKey converts any stored date into YYYY-MM-DD (the page passes its own parser).
+    function clientHistory(db, cliId, today, toKey = dateKey) {
+        const credits = (db.cre || []).filter(c => c.cliId === cliId && !c.esPrueba);
+        const ids = new Set(credits.map(c => c.id));
+        const payments = (db.pag || []).filter(p => ids.has(p.creId) && p.tipo !== 'refinanciamiento' && !String(p.obs || '').startsWith('Cancelado por descuento en nuevo crédito') && Number(p.t) > 0);
+        const rows = credits.map(c => {
+            let ontime = 0, late = 0, overdue = 0, maxDays = 0;
+            (c.schedule || []).forEach(it => {
+                const key = toKey(it.date);
+                if(isPaidItem(it)) { if((Number(it.moraPaidTotal)||0) + (Number(it.moraWaivedTotal)||0) > 0) late++; else ontime++; }
+                else if(key && key < today) { overdue++; maxDays = Math.max(maxDays, daysBetween(key, today)); }
+            });
+            const active = Number(c.saldo) > 0.005;
+            return {id:c.id, fecha:toKey(c.fecDes || c.date) || '', cap:Number(c.cap)||0, total:Number(c.total)||0, saldo:Math.max(0,Number(c.saldo)||0), active, ontime, late, overdue, maxDays};
+        }).sort((a,b) => b.fecha.localeCompare(a.fecha));
+        const sum = key => rows.reduce((t,r) => t + r[key], 0);
+        const ontime = sum('ontime'), late = sum('late'), overdue = sum('overdue'), due = ontime + late + overdue;
+        const maxDays = rows.reduce((m,r) => Math.max(m,r.maxDays), 0);
+        const score = due ? Math.round((ontime + late*0.5) / due * 100) : null;
+        let rating = 'Sin historial';
+        if(due) {
+            rating = maxDays > 30 ? 'Mala' : score >= 85 ? 'Buena' : score >= 60 ? 'Media' : 'Mala';
+            if(rating === 'Buena' && overdue > 0) rating = 'Media';
+        }
+        return {rows, rating, score, ontime, late, overdue, due, maxDays, credits: rows.length, active: rows.filter(r => r.active).length, cancelled: rows.filter(r => !r.active).length,
+            capital: round2(sum('cap')), pending: round2(sum('saldo')), paid: round2(payments.reduce((t,p) => t + Number(p.t), 0)), interest: round2(payments.reduce((t,p) => t + (Number(p.int)||0), 0)), mora: round2(payments.reduce((t,p) => t + (Number(p.m)||0), 0)),
+            first: rows.length ? rows[rows.length-1].fecha : '', last: rows.length ? rows[0].fecha : ''};
+    }
+
+    // ---- Contabilidad ----
+    const ACC_TYPES = {ingreso:'Ingreso', gasto:'Gasto / egreso', retiro:'Retiro de socio', activo:'Activo (bien o equipo)', pasivo:'Pasivo (deuda recibida)', pago_pasivo:'Pago de pasivo', capital:'Capital inicial / ajuste'};
+    const EXPENSE_CATEGORIES = ['Salarios y comisiones','Alquiler','Servicios (luz, agua, internet, teléfono)','Transporte y combustible','Papelería y útiles','Publicidad','Impuestos y licencias','Mantenimiento','Incobrable / castigo de cartera','Otros'];
+    const isRealDate = (date, today) => /^\d{4}-\d{2}-\d{2}$/.test(date || '') && dateKey(date) === date && date <= today && new Date(date+'T12:00:00').getDate() === Number(date.slice(-2));
+    function validEntry(e, partners, today) {
+        const amount = Number(e && e.monto);
+        return !!e && Object.prototype.hasOwnProperty.call(ACC_TYPES, e.tipo) && Number.isFinite(amount) && amount > 0 && isRealDate(e.fecha, today) && String(e.concepto || '').trim().length >= 2
+            && (!e.socioId || (partners || []).some(p => p.id === e.socioId));
+    }
+    const activeEntries = db => (db.conta || []).filter(e => !e.anulado);
+    function accountingReport(db, from, to) {
+        const entries = activeEntries(db).filter(e => e.fecha >= from && e.fecha <= to);
+        const cash = cashReport(db, from, to);
+        const sumType = t => round2(entries.filter(e => e.tipo === t).reduce((s,e) => s + Number(e.monto), 0));
+        const interest = round2(cash.rows.reduce((s,p) => s + (Number(p.int)||0), 0)), mora = round2(cash.mora), other = sumType('ingreso'), expenses = sumType('gasto');
+        const income = round2(interest + mora + other), profit = round2(income - expenses);
+        const byCategory = {};
+        entries.filter(e => e.tipo === 'gasto').forEach(e => { const k = e.categoria || 'Otros'; byCategory[k] = round2((byCategory[k]||0) + Number(e.monto)); });
+        return {interest, mora, other, income, expenses, profit, margin: income > 0 ? Math.round(profit/income*1000)/10 : 0, withdrawals: sumType('retiro'), liabilityPayments: sumType('pago_pasivo'), byCategory, collected: cash.total};
+    }
+    function monthlyAccounting(db, endMonth, count) {
+        const out = [];
+        for(let i = count-1; i >= 0; i--) { const m = addMonths(endMonth, -i), r = accountingReport(db, m+'-01', m+'-31'); out.push({month:m, income:r.income, expenses:r.expenses, profit:r.profit}); }
+        return out;
+    }
+    // Balance as of today. Cash is estimated from recorded flows; portfolio is outstanding capital.
+    function balanceSheet(db, today) {
+        const entries = activeEntries(db).filter(e => e.fecha <= today);
+        const sumType = t => entries.filter(e => e.tipo === t).reduce((s,e) => s + Number(e.monto), 0);
+        const credits = [...(db.cre || []), ...(db.trash || []).filter(x => x.type === 'cre').map(x => x.data)].filter(c => !c.esPrueba);
+        const disbursed = credits.reduce((s,c) => s + (c.neto != null ? Number(c.neto) : Number(c.cap) || 0), 0);
+        const collected = cashReport(db, '0000-01-01', today).total;
+        const partnerCapital = (db.aportes || []).filter(a => a.fecha <= today).reduce((s,a) => s + Number(a.monto), 0);
+        const initialCapital = sumType('capital'), liabilityIn = sumType('pasivo'), liabilityOut = sumType('pago_pasivo'), fixed = sumType('activo');
+        const withdrawals = sumType('retiro'), otherIncome = sumType('ingreso'), expenses = sumType('gasto');
+        const cash = partnerCapital + initialCapital + liabilityIn + otherIncome + collected - disbursed - expenses - withdrawals - liabilityOut - fixed;
+        const portfolio = (db.cre || []).filter(c => !c.esPrueba && Number(c.saldo) > 0.005 && Number(c.total) > 0).reduce((s,c) => s + Number(c.saldo) * Number(c.cap) / Number(c.total), 0);
+        const assets = cash + portfolio + fixed, liabilities = Math.max(0, liabilityIn - liabilityOut), equity = assets - liabilities;
+        const contributed = partnerCapital + initialCapital;
+        return {cash:round2(cash), portfolio:round2(portfolio), fixed:round2(fixed), assets:round2(assets), liabilities:round2(liabilities), equity:round2(equity), contributed:round2(contributed), withdrawals:round2(withdrawals), results:round2(equity - contributed + withdrawals)};
+    }
+    root.GycRules = {daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);
