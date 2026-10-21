@@ -643,6 +643,7 @@
             <button class="nav-btn active" onclick="tab('sect-dash', this)"><i>📊</i><span>Resumen</span></button>
             <button class="nav-btn" onclick="tab('sect-cli', this)"><i>👥</i><span>Clientes</span></button>
             <button class="nav-btn" onclick="tab('sect-cre', this)"><i>💳</i><span>Créditos</span></button>
+            <button class="nav-btn" onclick="tab('sect-socios', this)"><i>🤝</i><span>Socios</span></button>
             <button class="nav-btn" onclick="tab('sect-arqueo', this)"><i>🧮</i><span>Arqueo</span></button>
             <button class="nav-btn" onclick="tab('sect-rep', this)"><i>📑</i><span>Reportes</span></button>
             <button class="nav-btn" onclick="tab('sect-agenda', this); renderAgenda();"><i>🗓️</i><span>Agenda</span></button>
@@ -767,6 +768,7 @@
                 <div style="margin-bottom:15px;">
                     <button class="btn btn-primary" onclick="openCliModal()">+ NUEVO CLIENTE</button>
                 </div>
+                <label for="client-search">Buscar cliente</label><input id="client-search" type="search" placeholder="Nombre, cédula, teléfono o número de cliente" oninput="renderCli()">
                 <div id="list-cli" class="grid-2"></div>
             </section>
 
@@ -780,6 +782,7 @@
                 <div style="margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="openCreModal()">+ CREAR CRÉDITO</button>
                 </div>
+                <label for="credit-search">Buscar crédito</label><input id="credit-search" type="search" placeholder="Nombre del cliente o número de crédito" oninput="renderCre()">
                 <div id="list-cre" class="grid-2"></div>
             </section>
 
@@ -790,6 +793,7 @@
                     <div class="tab-item" onclick="renderReport('mensual', this)">MENSUAL</div>
                     <div class="tab-item" onclick="renderReport('mora', this)">MORA</div>
                 </div>
+                <div id="mora-search-box" class="hidden"><label for="mora-search">Buscar en mora</label><input id="mora-search" type="search" placeholder="Nombre del cliente o número de crédito" oninput="refreshReportIfOpen()"></div>
                 <div id="report-content" class="card"></div>
             </section>
 
@@ -807,6 +811,32 @@
                     <div><label>Cobrador</label><select id="cash-collector" onchange="renderCash()"><option value="">Todos</option></select></div>
                 </div>
                 <div id="cash-content"></div>
+            </section>
+
+            <section id="sect-socios" class="hidden">
+                <h2 class="cash-title">Socios</h2>
+                <div id="partners-summary" class="kpi-grid"></div>
+                <div class="grid-2">
+                    <form id="partner-form" onsubmit="event.preventDefault(); addPartner()">
+                        <h3 class="cash-section">Registrar socio</h3>
+                        <label for="partner-name">Nombre del socio</label><input id="partner-name" required maxlength="120">
+                        <label for="partner-phone">Teléfono</label><input id="partner-phone" type="tel" maxlength="30">
+                        <button class="btn btn-primary" type="submit" onclick="" data-partner-write>+ REGISTRAR SOCIO</button>
+                    </form>
+                    <form id="contribution-form" onsubmit="event.preventDefault(); addContribution()">
+                        <h3 class="cash-section">Registrar aporte de capital</h3>
+                        <label for="contribution-partner">Socio</label><select id="contribution-partner" required></select>
+                        <label for="contribution-amount">Capital aportado (C$)</label><input id="contribution-amount" type="number" min="0.01" step="0.01" required>
+                        <label for="contribution-date">Fecha del aporte</label><input id="contribution-date" type="date" required>
+                        <label for="contribution-note">Referencia / observación</label><input id="contribution-note" maxlength="250">
+                        <button class="btn btn-primary" type="submit" onclick="" data-partner-write>+ REGISTRAR APORTE</button>
+                    </form>
+                </div>
+                <h3 class="cash-section">Capital por socio</h3>
+                <div class="table-wrapper"><table><thead><tr><th>Socio</th><th>Teléfono</th><th>Aportes</th><th>Capital aportado</th></tr></thead><tbody id="partners-list"></tbody></table></div>
+                <h3 class="cash-section">Historial de aportes</h3>
+                <label for="partner-filter">Socio</label><select id="partner-filter" onchange="renderPartners()"><option value="">Todos</option></select>
+                <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Capital aportado</th><th>Referencia / observación</th><th>Registrado por</th></tr></thead><tbody id="contributions-list"></tbody></table></div>
             </section>
 
             <!-- AGENDA DE COBROS (NUEVO) -->
@@ -1066,7 +1096,7 @@
             if(allowed(action)) return true;
             alert('Tu permiso no permite esta acción.'); return false;
         }
-        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit'};
+        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners'};
         function applyPermissions() {
             document.querySelectorAll('[onclick],input[type=file]').forEach(el => {
                 const code = el.getAttribute('onclick') || el.getAttribute('onchange') || '';
@@ -1079,6 +1109,7 @@
                 if(action) { el.disabled = !allowed(action); el.title = el.disabled ? 'Sin permiso para esta acción' : ''; }
             });
             document.querySelectorAll('#adj-user input,#adj-user select,#adj-emp input,#adj-emp textarea,#adj-db input:not([type=file])').forEach(el=>el.disabled=!allowed('edit'));
+            document.querySelectorAll('#partner-form input,#contribution-form input,#contribution-form select,[data-partner-write]').forEach(el=>el.disabled=!allowed('partners'));
             document.getElementById('cre-refi').disabled = !allowed('edit');
             if(!allowed('edit')) document.getElementById('cre-refi').value = '';
         }
@@ -1100,7 +1131,7 @@
             if(!db.trash) db.trash = []; if(!db.hist) db.hist = []; if(!db.cfg) db.cfg = {};
             if(!db.cfg.mora) db.cfg.mora = { activa: 'si', gracia: 0 };
             if(session) { const u = (db.users||[]).find(x => x.u === session.u); if(!u || u.s === 'Inactivo') { session=null; location.reload(); return; } session = u; }
-            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','renderCash','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
+            ['renderDash','renderCli','renderCre','renderAgenda','renderHist','renderUsers','renderTrash','renderCash','renderPartners','refreshReportIfOpen'].forEach(f => { try { if(session && typeof window[f] === 'function') window[f](); } catch(e) {} });
         };
         function log(acc) { if(!session || GycRules.normalize(cloudRole)==='asistente' || GycRules.normalize(session.r)==='asistente') return; db.hist.unshift({ u: session.u, n: session.n, f: new Date().toLocaleDateString(), h: new Date().toLocaleTimeString(), a: acc }); save(); }
 
@@ -1548,6 +1579,7 @@
             if(el) el.classList.add('active');
             if(id === 'sect-cli') renderCli();
             if(id === 'sect-cre') renderCre();
+            if(id === 'sect-socios') renderPartners();
             if(id === 'sect-hist') renderHist();
             if(id === 'sect-rep') renderReport(currentReport, currentReportEl || document.querySelector('#sect-rep .tab-item'));
             if(id === 'sect-dash') renderDash();
@@ -1569,7 +1601,8 @@
 
         // --- CLIENTES ---
         function renderCli() {
-            document.getElementById('list-cli').innerHTML = db.cli.map(c => `
+            const query = document.getElementById('client-search').value;
+            document.getElementById('list-cli').innerHTML = db.cli.filter(c=>GycRules.matches(query,c.nom,c.id,c.ced,c.tel)).map(c => `
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div>
@@ -1621,14 +1654,16 @@
         }
 
         // --- CRÉDITOS ---
-        function renderCre(filter = 'todos', el = null) {
+        let creditType = 'todos';
+        function renderCre(filter = creditType, el = null) {
+            creditType = filter;
             if(el) {
                 document.querySelectorAll('#sect-cre .tab-item').forEach(b => b.classList.remove('active'));
                 el.classList.add('active');
             }
-            let filtered = db.cre;
-            if(filter === 'real') filtered = db.cre.filter(c => !c.esPrueba);
-            if(filter === 'prueba') filtered = db.cre.filter(c => c.esPrueba);
+            let filtered = GycRules.creditSearch(db,document.getElementById('credit-search').value);
+            if(filter === 'real') filtered = filtered.filter(c => !c.esPrueba);
+            if(filter === 'prueba') filtered = filtered.filter(c => c.esPrueba);
 
             document.getElementById('list-cre').innerHTML = filtered.map(c => {
                 const cli = db.cli.find(x => x.id === c.cliId);
@@ -2258,14 +2293,55 @@
             db.cli.filter(c => c.nom.toLowerCase().includes(val) || c.id.toLowerCase().includes(val)).forEach(c => {
                 html += `<div onclick="tab('sect-cli'); openCliModal('${c.id}')" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">👥 ${c.nom} <small>(${c.id})</small></div>`;
             });
-            db.cre.filter(c => c.id.toLowerCase().includes(val)).forEach(c => {
-                html += `<div onclick="tab('sect-cre'); accountStatement('${c.id}')" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">💳 Crédito: ${c.id}</div>`;
+            GycRules.creditSearch(db,val).forEach(c => {
+                const cli=db.cli.find(x=>x.id===c.cliId);
+                html += `<div onclick="showCreditSearch('${c.id}')" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">💳 ${escapeText(cli?.nom || 'Desconocido')} · Crédito: ${escapeText(c.id)}</div>`;
             });
             db.pag.filter(p => p.id.toLowerCase().includes(val)).forEach(p => {
                 html += `<div onclick="printThermal(db.pag.find(x=>x.id==='${p.id}'))" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:13px;">🧾 Recibo: ${p.id} <small>(${p.nom})</small></div>`;
             });
             res.innerHTML = html || '<p style="padding:12px; font-size:13px; color:var(--text-muted);">Sin coincidencias encontradas.</p>';
             res.classList.remove('hidden');
+        }
+
+        function showCreditSearch(id) {
+            document.getElementById('credit-search').value = id;
+            creditType='todos';
+            document.querySelectorAll('#sect-cre .tab-item').forEach((el,i)=>el.classList.toggle('active',i===0));
+            tab('sect-cre',document.querySelectorAll('.nav-btn')[2]);
+            document.getElementById('search-results').classList.add('hidden');
+        }
+
+        function renderPartners() {
+            const partners=db.socios || [], entries=db.aportes || [];
+            const report=GycRules.partnerReport(partners,entries);
+            document.getElementById('partners-summary').innerHTML=`<div class="kpi"><span>Capital total aportado</span><h3>${agendaFmt(report.total)}</h3></div><div class="kpi"><span>Socios registrados</span><h3>${partners.length}</h3></div><div class="kpi"><span>Aportes registrados</span><h3>${entries.length}</h3></div>`;
+            const options=partners.map(p=>`<option value="${escapeText(p.id)}">${escapeText(p.nom)}</option>`).join('');
+            const select=document.getElementById('contribution-partner'), chosen=select.value;
+            select.innerHTML='<option value="">Seleccionar socio</option>'+options; select.value=chosen;
+            const filter=document.getElementById('partner-filter'), filtered=filter.value;
+            filter.innerHTML='<option value="">Todos</option>'+options; filter.value=filtered;
+            const date=document.getElementById('contribution-date'); date.max=toDateKey(getTodayCalendar()); if(!date.value) date.value=date.max;
+            document.getElementById('partners-list').innerHTML=report.rows.map(p=>`<tr><td>${escapeText(p.nom)}</td><td>${escapeText(p.tel || '—')}</td><td>${p.count}</td><td>${agendaFmt(p.total)}</td></tr>`).join('') || '<tr><td colspan="4">Sin socios registrados.</td></tr>';
+            document.getElementById('contributions-list').innerHTML=entries.filter(a=>!filtered || a.socioId===filtered).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id)).map(a=>`<tr><td>${escapeText(a.fecha)}</td><td>${escapeText(partners.find(p=>p.id===a.socioId)?.nom || 'Socio no disponible')}</td><td>${agendaFmt(a.monto)}</td><td>${escapeText(a.obs || '—')}</td><td>${escapeText(a.usuario)}</td></tr>`).join('') || '<tr><td colspan="5">Sin aportes registrados.</td></tr>';
+            applyPermissions();
+        }
+        function addPartner() {
+            if(!requireAction('partners')) return;
+            const nom=document.getElementById('partner-name').value.trim(), tel=document.getElementById('partner-phone').value.trim();
+            if(!nom) return alert('El nombre del socio es obligatorio.');
+            if((db.socios || []).some(p=>GycRules.matches(nom,p.nom) && GycRules.matches(p.nom,nom))) return alert('Este socio ya está registrado.');
+            const id=crypto.randomUUID();
+            db.socios=[...(db.socios || []),{id,nom,tel}];
+            log('Registró socio: '+nom); save(); document.getElementById('partner-form').reset(); renderPartners();
+            document.getElementById('contribution-partner').value=id;
+        }
+        function addContribution() {
+            if(!requireAction('partners')) return;
+            const socioId=document.getElementById('contribution-partner').value, monto=Number(document.getElementById('contribution-amount').value), fecha=document.getElementById('contribution-date').value;
+            if(!GycRules.validContribution(db.socios || [],socioId,monto,fecha,toDateKey(getTodayCalendar()))) return alert('Selecciona un socio, un monto mayor que cero y una fecha válida no posterior a hoy.');
+            db.aportes=[...(db.aportes || []),{id:crypto.randomUUID(),socioId,monto:Math.round(monto*100)/100,fecha,obs:document.getElementById('contribution-note').value.trim(),usuario:session.n || session.u}];
+            log('Registró aporte de capital: '+agendaFmt(monto)); save(); document.getElementById('contribution-form').reset(); renderPartners(); document.getElementById('contribution-partner').value=socioId;
         }
 
         // --- AGENDA DE COBROS (NUEVO: solo lectura, no modifica datos) ---
@@ -2479,6 +2555,7 @@
         function renderReport(type, el) {
             document.querySelectorAll('#sect-rep .tab-item').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
+            document.getElementById('mora-search-box').classList.toggle('hidden',type!=='mora');
             currentReport = type;
             currentReportEl = el;
             if(type === 'mora') {
@@ -2510,7 +2587,7 @@
         }
 
         function repMoraCredits() {
-            return db.cre.filter(c => {
+            return GycRules.creditSearch(db,document.getElementById('mora-search').value).filter(c => {
                 if(!(parseFloat(c.saldo) > 0.005)) return false; // solo créditos con saldo (activos)
                 if(repMoraTipo === 'real') return !c.esPrueba;
                 if(repMoraTipo === 'prueba') return !!c.esPrueba;
