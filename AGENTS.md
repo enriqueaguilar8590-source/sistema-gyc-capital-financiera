@@ -11,3 +11,4 @@
 
 - Keep the existing standalone system UI; share browser-safe permission and cash-report rules through a public script tested with Vitest.
 - Team membership roles are authoritative in the database; legacy internal user permissions can only narrow cloud permissions, and workspace writes must validate role-specific changes server-side.
+- Store partners and append-only capital contributions as ID-keyed workspace arrays; existing three-way merging synchronizes them and server workspace validation restricts new financial keys to administrators. Do not initialize missing arrays during read-only use, because that would create unauthorized writes.
