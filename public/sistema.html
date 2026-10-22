@@ -969,6 +969,7 @@
                         <label>Nombre Empresa</label><input type="text" id="cfg-name">
                         <label>Teléfono</label><input type="text" id="cfg-tel">
                         <label>Dirección</label><input type="text" id="cfg-dir">
+                        <label>Tipo de cambio por defecto (C$ por US$)</label><input type="number" id="cfg-tc" step="0.01" min="1" placeholder="36.50">
                         <label>Frase Recibo</label><textarea id="cfg-frase" rows="3"></textarea>
                         <button class="btn btn-primary" onclick="saveCfg()">GUARDAR EMPRESA</button>
                     </div>
@@ -1120,9 +1121,14 @@
             <h3 style="margin-bottom: 20px; color: var(--primary);">Registrar Cobro</h3>
             <div id="pay-info" class="card" style="font-size:13px; line-height: 1.6;"></div>
             <div class="grid-2">
-                <div><label>Monto Entregado (Total Recibido)</label><input type="number" id="pay-mnt" step="0.01"></div>
+                <div><label for="pay-mon">Moneda del pago</label><select id="pay-mon" onchange="payCurrencyChange()"><option value="NIO">Córdobas (C$)</option><option value="USD">Dólares (US$)</option></select></div>
+                <div id="pay-tc-box" class="hidden"><label for="pay-tc">Tipo de cambio (C$ por US$)</label><input type="number" id="pay-tc" step="0.01" min="1" value="36.50" oninput="refreshPayPreview(true)"></div>
+            </div>
+            <div class="grid-2">
+                <div><label id="pay-mnt-label">Monto Entregado (Total Recibido)</label><input type="number" id="pay-mnt" step="0.01" oninput="payUsdNote()"></div>
                 <div><label>Mora Generada</label><input type="number" id="pay-mora" readonly style="background:var(--bg-input); color:var(--danger); font-weight:bold;"></div>
             </div>
+            <div id="pay-usd-note" class="hidden" style="margin:-4px 0 12px; padding:10px 12px; border-radius:12px; background:var(--bg-input); border:1px dashed var(--primary); font-size:13px;"></div>
             <div id="pay-dispensa-box" class="hidden" style="background:var(--bg-input); border:1px dashed var(--warning); border-radius:12px; padding:12px; margin-bottom:12px;">
                 <label>Dispensa de mora (C$)</label>
                 <div style="display:flex; gap:8px; align-items:flex-start;">
@@ -2086,11 +2092,28 @@
             document.getElementById('pay-obs').value = "";
             document.getElementById('pay-dispensa').value = '0';
             payLastSuggested = '';
+            document.getElementById('pay-mon').value = 'NIO';
+            document.getElementById('pay-tc').value = Number(db.cfg.tc) > 0 ? Number(db.cfg.tc).toFixed(2) : GycRules.DEFAULT_RATE.toFixed(2);
             refreshPayPreview(true);
             showModal('modal-pay');
         }
 
         // Recalcula atraso y mora según la fecha elegida para el pago
+        const payIsUsd = () => document.getElementById('pay-mon').value === 'USD';
+        const payRate = () => { const v = parseFloat(document.getElementById('pay-tc').value); return GycRules.validRate(v) ? v : 0; };
+        function payCurrencyChange() {
+            const usd = payIsUsd();
+            document.getElementById('pay-tc-box').classList.toggle('hidden', !usd);
+            document.getElementById('pay-mnt-label').textContent = usd ? 'Monto entregado (US$)' : 'Monto Entregado (Total Recibido)';
+            refreshPayPreview(true);
+        }
+        function payUsdNote() {
+            const box = document.getElementById('pay-usd-note');
+            if(!payIsUsd()) return box.classList.add('hidden');
+            const tc = payRate(), usd = parseFloat(document.getElementById('pay-mnt').value) || 0;
+            box.classList.remove('hidden');
+            box.innerHTML = tc ? `US$ ${usd.toFixed(2)} × ${tc.toFixed(2)} = <b>C$ ${(Math.round(usd * tc * 100) / 100).toFixed(2)}</b> que se aplican al crédito.` : '<span style="color:var(--danger)">Escribe un tipo de cambio válido (entre 1 y 1000).</span>';
+        }
         function refreshPayPreview(force) {
             const c = db.cre.find(x => x.id === activeCreId);
             if(!c) return;
@@ -2137,9 +2160,16 @@
 
             // Solo se reemplaza el monto si el usuario no lo ha editado a mano
             const mntEl = document.getElementById('pay-mnt');
-            const sugerido = Math.max(0, (summary.totalArrears > 0 ? summary.totalArrears - dis : nextPendingAmount)).toFixed(2);
+            const sugeridoC = Math.max(0, (summary.totalArrears > 0 ? summary.totalArrears - dis : nextPendingAmount));
+            const usdMode = payIsUsd(), tc = payRate();
+            const sugerido = (usdMode ? GycRules.toUsdCeil(sugeridoC, tc) : sugeridoC).toFixed(2);
             if(force || mntEl.value === payLastSuggested || mntEl.value === '') mntEl.value = sugerido;
             payLastSuggested = sugerido;
+            if(usdMode) {
+                const u = n => 'US$ ' + GycRules.toUsd(n, tc).toFixed(2);
+                document.getElementById('pay-info').insertAdjacentHTML('beforeend', `<div style="margin-top:10px; border-top:1px solid var(--border); padding-top:8px;"><b>EN DÓLARES (T/C ${tc.toFixed(2)}):</b><br>Total en atraso: ${u(summary.totalArrears - dis)}<br>${next ? 'Próxima cuota: ' + u(nextPendingAmount) : ''}</div>`);
+            }
+            payUsdNote();
             document.getElementById('pay-atraso').value = summary.overdueCount;
             document.getElementById('pay-mora').value = summary.moraAmount.toFixed(2);
         }
@@ -2154,7 +2184,8 @@
         function confirmPay() {
             if(!requireAction('collect')) return;
             const c = db.cre.find(x => x.id === activeCreId);
-            const totalRecibido = parseFloat(document.getElementById('pay-mnt').value) || 0;
+            let totalRecibido = parseFloat(document.getElementById('pay-mnt').value) || 0;
+            const usdPay = payIsUsd();
             const obs = document.getElementById('pay-obs').value;
             const saldoAnterior = c.saldo;
             const realToday = getTodayCalendar();
@@ -2169,6 +2200,12 @@
             const esAdmin = allowed('edit');
             let dispensa = esAdmin ? Math.max(0, parseFloat(document.getElementById('pay-dispensa').value) || 0) : 0;
             dispensa = Math.min(dispensa, moraPendienteAlMomento);
+            let usdInfo = null;
+            if(usdPay) {
+                usdInfo = GycRules.convertUsdPayment(totalRecibido, payRate(), c.saldo + moraPendienteAlMomento - dispensa);
+                if(!usdInfo) return alert("Escribe un monto en dólares y un tipo de cambio válido (entre 1 y 1000).");
+                totalRecibido = usdInfo.cordobas;
+            }
 
             if(totalRecibido > c.saldo + moraPendienteAlMomento - dispensa + 0.005) return alert("El monto supera el saldo y la mora pendiente.");
             if(totalRecibido < 0 || (totalRecibido <= 0 && dispensa <= 0.005)) return alert("Monto no válido");
@@ -2239,12 +2276,12 @@
                 t: totalRecibido, 
                 sa: saldoAnterior, 
                 sq: saldoAnterior - montoParaCuota,
-                obs, fechaISO:todayKey, cobradorUsuario:session.u, f: today.toLocaleDateString(), h: new Date().toLocaleTimeString(), fReg: new Date().toLocaleDateString(), g: session.n
+                obs, ...(usdInfo ? {mon:'USD', usd:usdInfo.usd, tc:usdInfo.tc} : {}), fechaISO:todayKey, cobradorUsuario:session.u, f: today.toLocaleDateString(), h: new Date().toLocaleTimeString(), fReg: new Date().toLocaleDateString(), g: session.n
             };
 
             c.saldo -= montoParaCuota;
             db.pag.push(p);
-            log(`Cobro ${recId}: C$ ${p.t} (Ref: ${c.id})` + (p.f !== p.fReg ? ` · fecha de pago ${p.f}` : '') + (p.dis > 0 ? ` · DISPENSA DE MORA C$ ${p.dis.toFixed(2)}` : ''));
+            log(`Cobro ${recId}: C$ ${p.t}` + (usdInfo ? ` (US$ ${usdInfo.usd.toFixed(2)} a T/C ${usdInfo.tc.toFixed(2)})` : '') + ` (Ref: ${c.id})` + (p.f !== p.fReg ? ` · fecha de pago ${p.f}` : '') + (p.dis > 0 ? ` · DISPENSA DE MORA C$ ${p.dis.toFixed(2)}` : ''));
             save(); closeModal(); renderCre(); renderDash(); refreshReportIfOpen(); printThermal(p);
             if(smsAutoOn() && !(c && c.esPrueba)) sendPaymentSms(true);
         }
@@ -2363,7 +2400,7 @@
             const cli = db.cli.find(x => x.id === p.cid);
             const number = GycRules.smsNumber(cli?.tel);
             if(!number) return auto === true ? undefined : alert('El cliente no tiene un teléfono válido registrado. Edita el cliente y escribe su número (8 dígitos).');
-            const text = GycRules.paymentSms({empresa: db.cfg.name, cliente: p.nom, monto: p.t, fecha: (p.fechaISO || '').split('-').reverse().join('/') || p.f, mora: p.m, saldo: p.sq, recibo: p.id});
+            const text = GycRules.paymentSms({empresa: db.cfg.name, cliente: p.nom, monto: p.t, fecha: (p.fechaISO || '').split('-').reverse().join('/') || p.f, mora: p.m, saldo: p.sq, recibo: p.id, usd: p.mon === 'USD' ? p.usd : 0, tc: p.tc});
             if(auto !== true && !confirm('Se abrirá tu app de mensajes con este SMS para ' + number + ':\n\n' + text)) return;
             log('Abrió SMS de pago ' + p.id + ' para ' + number);
             location.href = GycRules.smsLink(number, text, isIOS());
@@ -2394,6 +2431,7 @@
                 MORA APLICADA: C$ ${p.m.toFixed(2)}<br>
                 ${p.dis > 0 ? `MORA DISPENSADA: C$ ${p.dis.toFixed(2)}<br>` : ''}
                 <b style="font-size:1.1em">TOTAL RECIBIDO: C$ ${p.t.toFixed(2)}</b><br>
+                ${p.mon === 'USD' ? `RECIBIDO EN DÓLARES: US$ ${Number(p.usd).toFixed(2)}<br>TIPO DE CAMBIO: C$ ${Number(p.tc).toFixed(2)} por US$<br>` : ''}
                 <hr>
                 <b>SALDO FINAL: C$ ${p.sq.toFixed(2)}</b><br>
                 <hr>
@@ -2627,6 +2665,7 @@
             document.getElementById('cfg-name').value = db.cfg.name;
             document.getElementById('cfg-tel').value = db.cfg.tel;
             document.getElementById('cfg-dir').value = db.cfg.dir;
+            document.getElementById('cfg-tc').value = Number(db.cfg.tc) > 0 ? Number(db.cfg.tc).toFixed(2) : '';
             document.getElementById('cfg-frase').value = db.cfg.frase;
             document.getElementById('seq-cli-pref').value = db.cfg.secuencias.cliPref;
             document.getElementById('seq-cli-next').value = db.cfg.secuencias.cliNext;
@@ -2639,6 +2678,8 @@
             db.cfg.name = document.getElementById('cfg-name').value;
             db.cfg.tel = document.getElementById('cfg-tel').value;
             db.cfg.dir = document.getElementById('cfg-dir').value;
+            const tcCfg = parseFloat(document.getElementById('cfg-tc').value);
+            if(GycRules.validRate(tcCfg)) db.cfg.tc = Math.round(tcCfg * 100) / 100; else delete db.cfg.tc;
             db.cfg.frase = document.getElementById('cfg-frase').value;
             save(); alert("Configuración de empresa guardada.");
             init();
@@ -3256,7 +3297,7 @@
                 <div class="kpi"><span>Total recibido</span><h3>${agendaFmt(report.total)}</h3></div>
                 <div class="kpi"><span>Recuperado sin mora</span><h3>${agendaFmt(report.recovered)}</h3></div>
                 <div class="kpi"><span>Mora cobrada</span><h3>${agendaFmt(report.mora)}</h3></div>
-                <div class="kpi"><span>Cobros</span><h3>${report.rows.length}</h3></div>
+                <div class="kpi"><span>Cobros</span><h3>${report.rows.length}</h3></div>${report.usdCount ? `<div class="kpi" style="--kpi-accent:var(--info)"><span>Cobrado en dólares</span><h3>US$ ${report.usd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</h3><small class="kpi-sub">${report.usdCount} ${report.usdCount === 1 ? 'cobro' : 'cobros'} · ya incluido en C$ (${agendaFmt(report.usdCordobas)})</small></div>` : ''}
                 </div><h3 class="cash-section">Por cobrador</h3><div class="table-wrapper"><table><thead><tr><th>Cobrador</th><th>Total recibido</th></tr></thead><tbody>${Object.entries(report.byCollector).map(([name,total])=>`<tr><td>${escapeText(name)}</td><td>${agendaFmt(total)}</td></tr>`).join('') || '<tr><td colspan="2">Sin cobros recuperados en este período.</td></tr>'}</tbody></table></div>
                 <h3 class="cash-section">Detalle de cobros · Créditos reales</h3><div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Recibo</th><th>Cliente</th><th>Cobrador</th><th>Recuperado</th><th>Mora</th><th>Recibido</th></tr></thead><tbody>${report.rows.map(p=>`<tr><td>${escapeText(p.f)}</td><td>${escapeText(p.id)}</td><td>${escapeText(p.nom)}</td><td>${escapeText(p.g)}</td><td>${agendaFmt(Number(p.t)-(Number(p.m)||0))}</td><td>${agendaFmt(p.m)}</td><td>${agendaFmt(p.t)}</td></tr>`).join('') || '<tr><td colspan="7">Sin movimientos</td></tr>'}</tbody></table></div>`;
         }

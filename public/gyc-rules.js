@@ -33,7 +33,8 @@
         const byCollector = {};
         rows.forEach(p=>{ const key=p.g || 'Sin identificar'; byCollector[key]=(byCollector[key] || 0)+Number(p.t); });
         const total = rows.reduce((s,p)=>s+Number(p.t),0), mora = rows.reduce((s,p)=>s+(Number(p.m)||0),0);
-        return {rows,total,mora,recovered:total-mora,byCollector};
+        const usdRows = rows.filter(p => p.mon === 'USD' && Number(p.usd) > 0);
+        return {rows,total,mora,recovered:total-mora,byCollector,usd:round2(usdRows.reduce((s,p)=>s+Number(p.usd),0)),usdCount:usdRows.length,usdCordobas:round2(usdRows.reduce((s,p)=>s+Number(p.t),0))};
     }
     function addDays(day, n) {
         const d = new Date(day+'T12:00:00');
@@ -114,6 +115,20 @@
         const edit = {fecha: stamp, usuario: user, nomAnterior: cur.nom, nomNuevo: name, telAnterior: cur.tel || '', telNuevo: phone, motivo: String(reason).trim()};
         return partners.map(p => p.id === id ? {...p, nom: name, tel: phone, ediciones: [...(p.ediciones || []), edit]} : p);
     }
+    // ---- Pagos en dólares ----
+    const DEFAULT_RATE = 36.5;
+    const validRate = tc => Number.isFinite(Number(tc)) && Number(tc) >= 1 && Number(tc) <= 1000;
+    const toUsd = (cordobas, tc) => validRate(tc) ? round2(Number(cordobas) / Number(tc)) : 0;
+    // Smallest US$ amount (to the cent) that covers a córdoba amount; used to suggest what the client hands over.
+    const toUsdCeil = (cordobas, tc) => validRate(tc) ? Math.ceil(Math.round(Number(cordobas) / Number(tc) * 10000) / 100 - 1e-9) / 100 : 0;
+    // The ledger stays in córdobas: a US$ payment is converted and the dollars + rate are kept on the receipt.
+    // If rounding to the cent pushes it over the maximum payable by less than one US cent, it is trimmed to the maximum.
+    function convertUsdPayment(usd, tc, maxCordobas) {
+        if(!validRate(tc) || !(Number(usd) > 0)) return null;
+        let cordobas = round2(Number(usd) * Number(tc)), capped = false;
+        if(maxCordobas != null && cordobas > maxCordobas + 0.005 && cordobas - maxCordobas <= round2(Number(tc) * 0.01) + 0.005) { cordobas = round2(maxCordobas); capped = true; }
+        return {cordobas, usd: round2(usd), tc: round2(tc), capped};
+    }
     // ---- Papelera: detalle y eliminación definitiva ----
     const isRefi = p => p.tipo === 'refinanciamiento' || String(p.obs || '').startsWith('Cancelado por descuento en nuevo crédito');
     function trashDetail(db, item) {
@@ -170,7 +185,8 @@
     }
     // Plain GSM text (no accents) so each SMS carries 160 characters.
     function paymentSms(p) {
-        const parts = [`${plain(p.empresa) || 'GYC Capital'}: ${plain(p.cliente).split(' ').slice(0,2).join(' ')}, recibimos su pago de ${money(p.monto)} el ${plain(p.fecha)}.`];
+        const paid = Number(p.usd) > 0 ? `US$${round2(p.usd).toFixed(2)} (${money(p.monto)} a T/C ${round2(p.tc).toFixed(2)})` : money(p.monto);
+        const parts = [`${plain(p.empresa) || 'GYC Capital'}: ${plain(p.cliente).split(' ').slice(0,2).join(' ')}, recibimos su pago de ${paid} el ${plain(p.fecha)}.`];
         if(Number(p.mora) > 0) parts.push(`Incluye mora ${money(p.mora)}.`);
         parts.push(Number(p.saldo) > 0.005 ? `Saldo pendiente: ${money(p.saldo)}.` : 'Su credito quedo cancelado. Gracias!');
         parts.push(`Recibo ${plain(p.recibo)}.`);
@@ -294,5 +310,5 @@
         const contributed = partnerCapital + initialCapital;
         return {cash:round2(cash), portfolio:round2(portfolio), fixed:round2(fixed), assets:round2(assets), liabilities:round2(liabilities), equity:round2(equity), contributed:round2(contributed), withdrawals:round2(withdrawals), results:round2(equity - contributed + withdrawals)};
     }
-    root.GycRules = {trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);
