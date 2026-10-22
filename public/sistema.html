@@ -874,7 +874,7 @@
                 </div>
 
                 <h3 class="cash-section">Capital por socio</h3>
-                <div class="table-wrapper"><table><thead><tr><th>Socio</th><th>Teléfono</th><th>Aportes</th><th>Capital aportado</th><th>Participación</th><th>Último aporte</th></tr></thead><tbody id="partners-list"></tbody></table></div>
+                <div class="table-wrapper"><table><thead><tr><th>Socio</th><th>Teléfono</th><th>Aportes</th><th>Capital aportado</th><th>Participación</th><th>Último aporte</th><th></th></tr></thead><tbody id="partners-list"></tbody></table></div>
 
                 <h3 class="cash-section">Historial de aportes</h3>
                 <div class="card" id="partner-lock-bar" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1150,6 +1150,31 @@
         </div>
     </div>
 
+    <!-- MODAL: corregir movimiento contable -->
+    <div id="modal-conta-edit" class="modal hidden">
+        <div class="modal-content" style="max-width:460px;">
+            <h3 style="margin-bottom:14px; color: var(--primary);">Corregir movimiento</h3>
+            <form onsubmit="event.preventDefault(); saveAccountingEdit()">
+                <div class="grid-2">
+                    <div><label for="cedit-tipo">Tipo</label><select id="cedit-tipo" onchange="contaEditSync()"></select></div>
+                    <div><label for="cedit-fecha">Fecha</label><input id="cedit-fecha" type="date" required></div>
+                </div>
+                <div class="grid-2">
+                    <div><label for="cedit-monto">Monto (C$)</label><input id="cedit-monto" type="number" min="0.01" step="0.01" required></div>
+                    <div id="cedit-cat-box"><label for="cedit-cat">Categoría</label><select id="cedit-cat"></select></div>
+                    <div id="cedit-socio-box" class="hidden"><label for="cedit-socio">Socio (opcional)</label><select id="cedit-socio"></select></div>
+                </div>
+                <label for="cedit-concepto">Concepto</label><input id="cedit-concepto" maxlength="160" required>
+                <label for="cedit-reason">Motivo de la corrección</label><input id="cedit-reason" maxlength="250" required placeholder="Ej.: se registró en la cuenta equivocada">
+                <small style="display:block; margin:-4px 0 10px; color:var(--text-muted); font-size:11px;">Los valores anteriores y el motivo quedan guardados en el movimiento.</small>
+                <div class="grid-2" style="margin-top:10px;">
+                    <button class="btn btn-primary" type="submit">GUARDAR CORRECCIÓN</button>
+                    <button class="btn btn-sec" type="button" onclick="closeModal()">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL: acceso a edición de socios -->
     <div id="modal-partner-lock" class="modal hidden">
         <div class="modal-content" style="max-width:380px;">
@@ -1161,6 +1186,23 @@
                 <p id="plock-msg" class="hidden" style="color:var(--danger); font-size:12px; margin:-4px 0 10px;"></p>
                 <div class="grid-2" style="margin-top:10px;">
                     <button class="btn btn-primary" type="submit" id="plock-btn">DESBLOQUEAR</button>
+                    <button class="btn btn-sec" type="button" onclick="closeModal()">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: editar socio -->
+    <div id="modal-partner-name" class="modal hidden">
+        <div class="modal-content" style="max-width:420px;">
+            <h3 style="margin-bottom:14px; color: var(--primary);">Corregir datos del socio</h3>
+            <form onsubmit="event.preventDefault(); savePartnerEdit()">
+                <label for="pname-nom">Nombre del socio</label><input id="pname-nom" required maxlength="120">
+                <label for="pname-tel">Teléfono</label><input id="pname-tel" type="tel" maxlength="30">
+                <label for="pname-reason">Motivo de la corrección</label><input id="pname-reason" maxlength="250" required placeholder="Ej.: error de digitación en el nombre">
+                <small style="display:block; margin:-4px 0 10px; color:var(--text-muted); font-size:11px;">Los aportes del socio se conservan. El nombre anterior y el motivo quedan guardados.</small>
+                <div class="grid-2" style="margin-top:10px;">
+                    <button class="btn btn-primary" type="submit">GUARDAR CAMBIO</button>
                     <button class="btn btn-sec" type="button" onclick="closeModal()">CANCELAR</button>
                 </div>
             </form>
@@ -1236,7 +1278,7 @@
             if(allowed(action)) return true;
             alert('Tu permiso no permite esta acción.'); return false;
         }
-        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners',addAccountingEntry:'accounting',voidAccountingEntry:'accounting'};
+        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners',editPartner:'partners',addAccountingEntry:'accounting',voidAccountingEntry:'accounting',editAccountingEntry:'accounting'};
         function applyPermissions() {
             document.querySelectorAll('[onclick],input[type=file]').forEach(el => {
                 const code = el.getAttribute('onclick') || el.getAttribute('onchange') || '';
@@ -1719,7 +1761,7 @@
             document.getElementById(id).classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             if(el) el.classList.add('active');
-            if(id !== 'sect-socios' && partnerUnlockUntil) { partnerUnlockUntil = 0; pendingEditId = null; }
+            if(id !== 'sect-socios' && partnerUnlockUntil) { partnerUnlockUntil = 0; pendingEditId = null; pendingUnlockAction = null; editingPartnerId = null; }
             if(id === 'sect-cli') renderCli();
             if(id === 'sect-cre') renderCre();
             if(id === 'sect-socios') renderPartners();
@@ -2581,7 +2623,7 @@
         }
 
         let partnerMonths = 6, partnerMonthChart = null, partnerShareChart = null;
-        let partnerUnlockUntil = 0, partnerFails = 0, partnerBlockUntil = 0, pendingEditId = null;
+        let partnerUnlockUntil = 0, partnerFails = 0, partnerBlockUntil = 0, pendingEditId = null, pendingUnlockAction = null, editingPartnerId = null;
         const PARTNER_UNLOCK_MS = 10*60*1000, PARTNER_COLORS = ['#1a7f4b','#c9a54a','#3b82f6','#8b5cf6','#d64545','#0ea5a4','#f59e0b','#64748b'];
         const partnerUnlocked = () => Date.now() < partnerUnlockUntil;
         const partnersVisible = () => !document.getElementById('sect-socios').classList.contains('hidden');
@@ -2639,7 +2681,7 @@
             const filter=document.getElementById('partner-filter'), filtered=filter.value;
             filter.innerHTML='<option value="">Todos</option>'+options; filter.value=filtered;
             const date=document.getElementById('contribution-date'); date.max=toDateKey(getTodayCalendar()); if(!date.value) date.value=date.max;
-            document.getElementById('partners-list').innerHTML=dash.rows.map((p,i)=>`<tr><td>${escapeText(p.nom)}</td><td>${escapeText(p.tel || '—')}</td><td>${p.count}</td><td>${agendaFmt(p.total)}</td><td style="min-width:120px"><b>${p.share}%</b><div class="dash-progress" style="margin:4px 0 0"><div style="width:${p.share}%;background:${PARTNER_COLORS[i%PARTNER_COLORS.length]}"></div></div></td><td>${escapeText(p.last || '—')}</td></tr>`).join('') || '<tr><td colspan="6">Sin socios registrados.</td></tr>';
+            document.getElementById('partners-list').innerHTML=dash.rows.map((p,i)=>`<tr><td>${escapeText(p.nom)}${(p.ediciones||[]).length?`<br><small class="kpi-sub" title="${escapeText((p.ediciones||[]).map(e=>e.fecha.slice(0,10)+' · '+e.usuario+' · '+e.nomAnterior+' → '+e.nomNuevo+' · '+e.motivo).join('\n'))}">✏️ Antes: ${escapeText(p.ediciones[0].nomAnterior)}</small>`:''}</td><td>${escapeText(p.tel || '—')}</td><td>${p.count}</td><td>${agendaFmt(p.total)}</td><td style="min-width:120px"><b>${p.share}%</b><div class="dash-progress" style="margin:4px 0 0"><div style="width:${p.share}%;background:${PARTNER_COLORS[i%PARTNER_COLORS.length]}"></div></div></td><td>${escapeText(p.last || '—')}</td><td><button type="button" class="btn btn-sm btn-sec" onclick="editPartner('${escapeText(p.id)}')">${partnerUnlocked()?'✏️':'🔒'} Editar</button></td></tr>`).join('') || '<tr><td colspan="7">Sin socios registrados.</td></tr>';
             const open=partnerUnlocked();
             document.getElementById('contributions-list').innerHTML=entries.filter(a=>!filtered || a.socioId===filtered).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha) || b.id.localeCompare(a.id)).map(a=>{
                 const edits=a.ediciones || [];
@@ -2652,7 +2694,7 @@
             applyPermissions();
         }
         function lockPartners() {
-            partnerUnlockUntil=0; pendingEditId=null;
+            partnerUnlockUntil=0; pendingEditId=null; pendingUnlockAction=null; editingPartnerId=null;
             if(partnersVisible()) renderPartners();
         }
         function togglePartnerLock() {
@@ -2660,8 +2702,8 @@
             if(partnerUnlocked()) return lockPartners();
             openPartnerLock(null);
         }
-        function openPartnerLock(editId) {
-            pendingEditId=editId;
+        function openPartnerLock(action) {
+            pendingUnlockAction=action;
             document.getElementById('plock-user').value=''; document.getElementById('plock-pass').value='';
             document.getElementById('plock-msg').classList.add('hidden');
             document.getElementById('modal-partner-lock').classList.remove('hidden'); document.body.style.overflow='hidden';
@@ -2681,22 +2723,44 @@
                     return fail('Usuario o contraseña incorrectos.');
                 }
                 partnerFails=0; partnerUnlockUntil=Date.now()+PARTNER_UNLOCK_MS;
-                const next=pendingEditId; pendingEditId=null;
+                const next=pendingUnlockAction; pendingUnlockAction=null;
                 document.getElementById('plock-pass').value=''; closeModal(); renderPartners();
-                if(next) editContribution(next);
+                if(next && next.startsWith('c:')) editContribution(next.slice(2));
+                if(next && next.startsWith('p:')) editPartner(next.slice(2));
             } finally { btn.disabled=false; }
         }
         function editContribution(id) {
             if(!requireAction('partners')) return;
             const entry=(db.aportes || []).find(a=>a.id===id);
             if(!entry) return alert('No se encontró este aporte.');
-            if(!partnerUnlocked()) return openPartnerLock(id);
+            if(!partnerUnlocked()) return openPartnerLock('c:'+id);
             pendingEditId=id;
             const partner=(db.socios || []).find(p=>p.id===entry.socioId);
             document.getElementById('pedit-info').innerHTML=`<b>${escapeText(partner?.nom || 'Socio no disponible')}</b><br>Aporte del ${escapeText(entry.fecha)} · monto actual <b>${agendaFmt(entry.monto)}</b>`;
             document.getElementById('pedit-amount').value=entry.monto; document.getElementById('pedit-reason').value='';
             document.getElementById('modal-partner-edit').classList.remove('hidden'); document.body.style.overflow='hidden';
             setTimeout(()=>{ const f=document.getElementById('pedit-amount'); f.focus(); f.select(); },50);
+        }
+        function editPartner(id) {
+            if(!requireAction('partners')) return;
+            const p=(db.socios || []).find(x=>x.id===id);
+            if(!p) return alert('No se encontró este socio.');
+            if(!partnerUnlocked()) return openPartnerLock('p:'+id);
+            editingPartnerId=id;
+            document.getElementById('pname-nom').value=p.nom; document.getElementById('pname-tel').value=p.tel || ''; document.getElementById('pname-reason').value='';
+            document.getElementById('modal-partner-name').classList.remove('hidden'); document.body.style.overflow='hidden';
+            setTimeout(()=>{ const f=document.getElementById('pname-nom'); f.focus(); f.select(); },50);
+        }
+        function savePartnerEdit() {
+            if(!requireAction('partners')) return;
+            if(!partnerUnlocked()) { closeModal(); return alert('La edición se bloqueó. Vuelve a desbloquearla para continuar.'); }
+            const id=editingPartnerId, old=(db.socios || []).find(x=>x.id===id);
+            const nom=document.getElementById('pname-nom').value, tel=document.getElementById('pname-tel').value, reason=document.getElementById('pname-reason').value;
+            const updated=GycRules.applyPartnerEdit(db.socios || [],id,nom,tel,reason,session.n || session.u,new Date().toISOString());
+            if(!updated) return alert('No se pudo guardar: cambia el nombre o el teléfono, no puede quedar vacío ni repetir a otro socio, y escribe el motivo.');
+            db.socios=updated; editingPartnerId=null;
+            log('Corrigió socio: '+old.nom+' → '+nom.trim()+' ('+reason.trim()+')');
+            save(); closeModal(); renderPartners();
         }
         function saveContributionEdit() {
             if(!requireAction('partners')) return;
@@ -2832,7 +2896,7 @@
             document.getElementById('conta-list').innerHTML = entries.map(e => {
                 const label = (GycRules.ACC_TYPES[e.tipo] || e.tipo) + (e.categoria ? `<br><small style="color:var(--text-muted)">${escapeText(e.categoria)}</small>` : '') + (e.socioId ? `<br><small style="color:var(--text-muted)">${escapeText((db.socios || []).find(p => p.id === e.socioId)?.nom || '')}</small>` : '');
                 const style = e.anulado ? 'text-decoration:line-through; opacity:.55;' : '';
-                return `<tr style="${style}"><td>${escapeText(e.fecha)}</td><td>${label}</td><td>${escapeText(e.concepto)}${e.anulado ? `<br><small>Anulado: ${escapeText(e.motivoAnulacion || '')}</small>` : ''}</td><td style="text-align:right; color:${sign[e.tipo] > 0 ? 'var(--primary)' : 'var(--danger)'}">${sign[e.tipo] > 0 ? '+' : '−'}${agendaFmt(e.monto)}</td><td>${escapeText(e.usuario || '')}</td><td>${e.anulado ? '' : `<button type="button" class="btn btn-sm btn-danger" onclick="voidAccountingEntry('${escapeText(e.id)}')">ANULAR</button>`}</td></tr>`;
+                return `<tr style="${style}"><td>${escapeText(e.fecha)}</td><td>${label}</td><td>${escapeText(e.concepto)}${(e.ediciones || []).length ? `<br><small class="kpi-sub" style="text-decoration:none" title="${escapeText(contaTrail(e))}">✏️ Corregido ${e.ediciones.length} ${e.ediciones.length === 1 ? 'vez' : 'veces'} · ${escapeText(e.ediciones[e.ediciones.length - 1].motivo)}</small>` : ''}${e.anulado ? `<br><small>Anulado: ${escapeText(e.motivoAnulacion || '')}</small>` : ''}</td><td style="text-align:right; color:${sign[e.tipo] > 0 ? 'var(--primary)' : 'var(--danger)'}">${sign[e.tipo] > 0 ? '+' : '−'}${agendaFmt(e.monto)}</td><td>${escapeText(e.usuario || '')}</td><td>${e.anulado ? '' : `<div style="display:flex; gap:6px;"><button type="button" class="btn btn-sm btn-sec" onclick="editAccountingEntry('${escapeText(e.id)}')">✏️ EDITAR</button><button type="button" class="btn btn-sm btn-danger" onclick="voidAccountingEntry('${escapeText(e.id)}')">ANULAR</button></div>`}</td></tr>`;
             }).join('') || '<tr><td colspan="6">Sin movimientos en este período.</td></tr>';
             renderContaCharts(r);
             applyPermissions();
@@ -2876,6 +2940,49 @@
             log('Contabilidad: ' + GycRules.ACC_TYPES[tipo] + ' ' + agendaFmt(entry.monto) + ' · ' + entry.concepto);
             save(); document.getElementById('conta-monto').value = ''; document.getElementById('conta-concepto').value = '';
             if(entry.fecha < document.getElementById('conta-from').value || entry.fecha > document.getElementById('conta-to').value) contaCustomRange();
+            renderConta();
+        }
+
+        const CONTA_FIELD_NAMES = {tipo: 'tipo', fecha: 'fecha', monto: 'monto', concepto: 'concepto', categoria: 'categoría', socioId: 'socio'};
+        function contaTrail(e) {
+            const show = (k, v) => v == null || v === '' ? '—' : k === 'tipo' ? (GycRules.ACC_TYPES[v] || v) : k === 'monto' ? agendaFmt(v) : k === 'socioId' ? ((db.socios || []).find(p => p.id === v)?.nom || v) : v;
+            return (e.ediciones || []).map(x => `${String(x.fecha).slice(0, 10)} · ${x.usuario} · ${Object.keys(x.despues).map(k => `${CONTA_FIELD_NAMES[k]}: ${show(k, x.antes[k])} → ${show(k, x.despues[k])}`).join('; ')} · ${x.motivo}`).join('\n');
+        }
+        let editingEntryId = null;
+        function contaEditSync() {
+            const t = document.getElementById('cedit-tipo').value;
+            document.getElementById('cedit-cat-box').classList.toggle('hidden', t !== 'gasto');
+            document.getElementById('cedit-socio-box').classList.toggle('hidden', t !== 'retiro');
+        }
+        function editAccountingEntry(id) {
+            if(!requireAction('accounting')) return;
+            const e = (db.conta || []).find(x => x.id === id); if(!e || e.anulado) return;
+            editingEntryId = id;
+            document.getElementById('cedit-tipo').innerHTML = Object.entries(GycRules.ACC_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+            document.getElementById('cedit-cat').innerHTML = GycRules.EXPENSE_CATEGORIES.map(c => `<option>${escapeText(c)}</option>`).join('');
+            document.getElementById('cedit-socio').innerHTML = '<option value="">—</option>' + (db.socios || []).map(p => `<option value="${escapeText(p.id)}">${escapeText(p.nom)}</option>`).join('');
+            document.getElementById('cedit-tipo').value = e.tipo;
+            document.getElementById('cedit-fecha').value = e.fecha; document.getElementById('cedit-fecha').max = toDateKey(getTodayCalendar());
+            document.getElementById('cedit-monto').value = e.monto; document.getElementById('cedit-concepto').value = e.concepto;
+            document.getElementById('cedit-cat').value = e.categoria || 'Otros'; document.getElementById('cedit-socio').value = e.socioId || '';
+            document.getElementById('cedit-reason').value = '';
+            contaEditSync();
+            showModal('modal-conta-edit');
+        }
+        function saveAccountingEdit() {
+            if(!requireAction('accounting')) return;
+            const tipo = document.getElementById('cedit-tipo').value;
+            const changes = {tipo, fecha: document.getElementById('cedit-fecha').value, monto: Number(document.getElementById('cedit-monto').value), concepto: document.getElementById('cedit-concepto').value,
+                categoria: tipo === 'gasto' ? document.getElementById('cedit-cat').value : undefined, socioId: tipo === 'retiro' ? document.getElementById('cedit-socio').value : undefined};
+            const old = (db.conta || []).find(x => x.id === editingEntryId);
+            const updated = GycRules.applyEntryEdit(db.conta || [], editingEntryId, changes, document.getElementById('cedit-reason').value, session.n || session.u, new Date().toISOString(), db.socios || [], toDateKey(getTodayCalendar()));
+            if(!updated) return alert('No se pudo guardar: revisa que algo haya cambiado, que el monto sea mayor que cero, la fecha sea válida (no futura) y escribas el motivo.');
+            db.conta = updated;
+            const now = updated.find(x => x.id === editingEntryId);
+            log('Contabilidad: corrigió ' + GycRules.ACC_TYPES[old.tipo] + ' ' + agendaFmt(old.monto) + ' → ' + GycRules.ACC_TYPES[now.tipo] + ' ' + agendaFmt(now.monto) + ' (' + document.getElementById('cedit-reason').value.trim() + ')');
+            editingEntryId = null; save(); closeModal();
+            const from = document.getElementById('conta-from').value, to = document.getElementById('conta-to').value;
+            if(now.fecha < from || now.fecha > to) contaCustomRange();
             renderConta();
         }
         function voidAccountingEntry(id) {

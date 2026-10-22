@@ -104,6 +104,16 @@
         const edit = {fecha: stamp, usuario: user, montoAnterior: round2(entry.monto), montoNuevo: round2(amount), motivo: String(reason).trim()};
         return contributions.map(a => a.id === id ? {...a, monto: edit.montoNuevo, ediciones: [...(a.ediciones || []), edit]} : a);
     }
+    // Editing a partner's name/phone: new name required, unique among partners, something must change, reason kept in history.
+    const samePerson = (a, b) => matches(a, b) && matches(b, a);
+    function applyPartnerEdit(partners, id, nom, tel, reason, user, stamp) {
+        const cur = partners.find(p => p.id === id), name = String(nom || '').trim(), phone = String(tel || '').trim();
+        if(!cur || name.length < 2 || String(reason || '').trim().length < 3) return null;
+        if(partners.some(p => p.id !== id && samePerson(name, p.nom))) return null;
+        if(name === cur.nom && phone === (cur.tel || '')) return null;
+        const edit = {fecha: stamp, usuario: user, nomAnterior: cur.nom, nomNuevo: name, telAnterior: cur.tel || '', telNuevo: phone, motivo: String(reason).trim()};
+        return partners.map(p => p.id === id ? {...p, nom: name, tel: phone, ediciones: [...(p.ediciones || []), edit]} : p);
+    }
     // Access lock for editing contributed capital. Only a salted PBKDF2 hash is stored, never the password itself.
     const PARTNER_LOCK = {user:'SociosGYL', salt:'e93149786d46e9feb07fbbb88db39446', iterations:210000, hash:'07a3608cffb4ae31e040afa2192f049b241ceaba94170a1e70168af272447387'};
     const utf8 = text => Uint8Array.from(unescape(encodeURIComponent(String(text))), c => c.charCodeAt(0));
@@ -205,6 +215,24 @@
         return !!e && Object.prototype.hasOwnProperty.call(ACC_TYPES, e.tipo) && Number.isFinite(amount) && amount > 0 && isRealDate(e.fecha, today) && String(e.concepto || '').trim().length >= 2
             && (!e.socioId || (partners || []).some(p => p.id === e.socioId));
     }
+    // Correcting an entry: the result must still be a valid entry, something must change, and a reason is required.
+    // The previous values stay in `ediciones`, so nothing is ever lost.
+    const ENTRY_FIELDS = ['tipo','fecha','monto','concepto','categoria','socioId'];
+    function applyEntryEdit(entries, id, changes, reason, user, stamp, partners, today) {
+        const entry = (entries || []).find(e => e.id === id);
+        if(!entry || entry.anulado || String(reason || '').trim().length < 3) return null;
+        const next = {...entry, ...changes, monto: round2(changes.monto != null ? changes.monto : entry.monto), concepto: String(changes.concepto != null ? changes.concepto : entry.concepto).trim()};
+        if(next.tipo !== 'gasto') delete next.categoria;
+        if(next.tipo !== 'retiro') delete next.socioId;
+        if(!next.categoria) delete next.categoria;
+        if(!next.socioId) delete next.socioId;
+        if(!validEntry(next, partners, today)) return null;
+        const before = {}, after = {};
+        ENTRY_FIELDS.forEach(k => { if(entry[k] !== next[k]) { before[k] = entry[k] == null ? null : entry[k]; after[k] = next[k] == null ? null : next[k]; } });
+        if(!Object.keys(after).length) return null;
+        next.ediciones = [...(entry.ediciones || []), {fecha: stamp, usuario: user, motivo: String(reason).trim(), antes: before, despues: after}];
+        return entries.map(e => e.id === id ? next : e);
+    }
     const activeEntries = db => (db.conta || []).filter(e => !e.anulado);
     function accountingReport(db, from, to) {
         const entries = activeEntries(db).filter(e => e.fecha >= from && e.fecha <= to);
@@ -237,5 +265,5 @@
         const contributed = partnerCapital + initialCapital;
         return {cash:round2(cash), portfolio:round2(portfolio), fixed:round2(fixed), assets:round2(assets), liabilities:round2(liabilities), equity:round2(equity), contributed:round2(contributed), withdrawals:round2(withdrawals), results:round2(equity - contributed + withdrawals)};
     }
-    root.GycRules = {daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);
