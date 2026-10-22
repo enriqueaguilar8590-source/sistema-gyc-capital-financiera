@@ -1021,7 +1021,8 @@
                 </div>
 
                 <div id="adj-trash" class="sub-sect hidden">
-                    <div id="list-trash" class="grid-2"></div>
+                    <div id="trash-head"></div>
+                    <div id="list-trash"></div>
                 </div>
             </section>
 
@@ -1138,6 +1139,20 @@
             <div class="grid-2" style="margin-top: 10px;">
                 <button class="btn btn-primary" onclick="confirmPay()">EFECTUAR COBRO</button>
                 <button class="btn btn-sec" onclick="closeModal()">CERRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: eliminar definitivamente de la papelera -->
+    <div id="modal-trash-purge" class="modal hidden">
+        <div class="modal-content" style="max-width:460px;">
+            <h3 id="tp-title" style="margin-bottom:12px; color: var(--danger);">Eliminar del todo</h3>
+            <div id="tp-body" class="card" style="font-size:13px; line-height:1.6;"></div>
+            <label for="tp-word">Escribe ELIMINAR para confirmar</label>
+            <input id="tp-word" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ELIMINAR" oninput="document.getElementById('tp-btn').disabled = this.value.trim().toUpperCase() !== 'ELIMINAR'">
+            <div class="grid-2" style="margin-top:10px;">
+                <button class="btn btn-danger" id="tp-btn" onclick="confirmTrashPurge()" disabled>ELIMINAR DEFINITIVAMENTE</button>
+                <button class="btn btn-sec" onclick="closeModal()">CANCELAR</button>
             </div>
         </div>
     </div>
@@ -1278,7 +1293,7 @@
             if(allowed(action)) return true;
             alert('Tu permiso no permite esta acción.'); return false;
         }
-        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners',editPartner:'partners',addAccountingEntry:'accounting',voidAccountingEntry:'accounting',editAccountingEntry:'accounting'};
+        const actionMap = {addUser:'users',toggleUser:'users',deleteUser:'users',changeUserRole:'users',saveCfg:'edit',saveSequences:'edit',moveToTrash:'edit',restoreFromTrash:'edit',openTrashPurge:'edit',restoreStoredBackup:'edit',importData:'edit',payPopup:'collect',confirmPay:'collect',dispensarTodaMora:'edit',addPartner:'partners',addContribution:'partners',togglePartnerLock:'partners',editContribution:'partners',editPartner:'partners',addAccountingEntry:'accounting',voidAccountingEntry:'accounting',editAccountingEntry:'accounting'};
         function applyPermissions() {
             document.querySelectorAll('[onclick],input[type=file]').forEach(el => {
                 const code = el.getAttribute('onclick') || el.getAttribute('onchange') || '';
@@ -2531,20 +2546,73 @@
             if(type === 'cli') renderCli(); else renderCre();
         }
 
-        function renderTrash() {
-            document.getElementById('list-trash').innerHTML = db.trash.map((t, i) => `
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <b>${t.type === 'cli' ? t.data.nom : t.data.id}</b><br>
-                            <small>${t.type.toUpperCase()} | Borrado: ${t.date}</small>
-                        </div>
-                        <button class="btn btn-sm btn-primary" onclick="restoreFromTrash(${i})">RESTAURAR</button>
-                    </div>
-                </div>
-            `).join('') || '<p style="text-align:center; width:100%;">La papelera está vacía.</p>';
+        let trashPurgeIdx = [];
+        function trashDetailHtml(d) {
+            const row = (k, v, color) => `<div class="dash-item" style="padding:6px 0;"><span style="color:var(--text-muted)">${k}</span><b${color ? ` style="color:${color}"` : ''}>${v}</b></div>`;
+            const warn = t => `<div style="margin-top:8px; padding:8px 10px; border-radius:10px; background:var(--danger-soft); color:var(--danger); font-size:12px;">${t}</div>`;
+            if(d.kind === 'cli') {
+                return d.fields.map(f => row(f[0], escapeText(f[1]))).join('')
+                    + `<div class="dash-section" style="margin:10px 0 4px">Créditos ligados (${d.credits.length})</div>`
+                    + (d.credits.map(c => row(escapeText(c.id) + (c.inTrash ? ' · en papelera' : '') + (c.test ? ' · prueba' : ''), `${agendaFmt(c.cap)} · ${c.active ? 'saldo ' + agendaFmt(c.saldo) : 'cancelado'}`)).join('') || '<small style="color:var(--text-muted)">Este cliente no tiene créditos.</small>')
+                    + (d.credits.length ? row('Cobros registrados', `${d.payCount} · ${agendaFmt(d.payTotal)}`) + warn('Al eliminar al cliente se conservan sus créditos y cobros para los reportes, el arqueo y la contabilidad, pero aparecerán como “Desconocido”.') : '');
+            }
+            return row('Cliente', escapeText(d.client)) + row('Capital', agendaFmt(d.cap)) + row('Interés', d.intPct != null ? d.intPct + '%' : '—') + row('Total a pagar', agendaFmt(d.total))
+                + row('Saldo pendiente', agendaFmt(d.saldo), d.saldo > 0.005 ? 'var(--danger)' : '') + row('Cuotas pagadas', `${d.paidInstallments} de ${d.plazo}`) + row('Desembolso', escapeText(d.date || '—')) + (d.test ? row('Tipo', 'Crédito de prueba') : '')
+                + `<div class="dash-section" style="margin:10px 0 4px">Cobros de este crédito (${d.payCount} · ${agendaFmt(d.payTotal)})</div>`
+                + (d.payments.slice(0, 8).map(p => row(`${escapeText(p.id)} · ${escapeText(p.fecha)}${p.refi ? ' · descuento' : ''}`, agendaFmt(p.t) + (p.m ? ' (mora ' + agendaFmt(p.m) + ')' : ''))).join('') || '<small style="color:var(--text-muted)">Sin cobros registrados.</small>')
+                + (d.payCount > 8 ? `<small class="kpi-sub">…y ${d.payCount - 8} más</small>` : '')
+                + (d.saldo > 0.005 ? warn(`⚠ Aún tiene saldo pendiente de ${agendaFmt(d.saldo)}. Si lo eliminas del todo, esa deuda se pierde.`) : '')
+                + (d.payCount ? warn(`Se ${d.payCount === 1 ? 'borrará también su único cobro' : 'borrarán también sus ' + d.payCount + ' cobros'} (${agendaFmt(d.payTotal)}). ${d.payCount === 1 ? 'Dejará' : 'Dejarán'} de contar en el arqueo, los reportes y la contabilidad.`) : '');
         }
-
+        function renderTrash() {
+            const items = db.trash || [], head = document.getElementById('trash-head');
+            const details = items.map(t => GycRules.trashDetail(db, t));
+            const nCli = details.filter(d => d.kind === 'cli').length, nCre = details.length - nCli;
+            const pay = details.filter(d => d.kind === 'cre').reduce((a, d) => ({n: a.n + d.payCount, t: a.t + d.payTotal}), {n: 0, t: 0});
+            head.innerHTML = items.length ? `<div class="card" style="border-left:4px solid var(--danger);">
+                <div class="dash-row-head"><b>🗑️ ${items.length} ${items.length === 1 ? 'registro' : 'registros'} en la papelera</b>
+                <button type="button" class="btn btn-sm btn-danger" onclick="openTrashPurge('all')">VACIAR PAPELERA</button></div>
+                <small class="kpi-sub">${nCli} ${nCli === 1 ? 'cliente' : 'clientes'} · ${nCre} ${nCre === 1 ? 'crédito' : 'créditos'}${pay.n ? ` · ${pay.n} ${pay.n === 1 ? 'cobro' : 'cobros'} por ${agendaFmt(pay.t)} ligados a esos créditos` : ''}. Revisa el detalle de cada uno antes de eliminar. Mientras estén aquí se pueden restaurar.</small></div>` : '';
+            document.getElementById('list-trash').innerHTML = details.map((d, i) => `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <div><b>${escapeText(d.kind === 'cli' ? d.title : d.id)}</b>${d.kind === 'cre' ? ` · ${escapeText(d.client)}` : ''}<br>
+                            <small>${d.kind === 'cli' ? 'CLIENTE' : 'CRÉDITO'} | Borrado: ${escapeText(d.deleted)}${d.kind === 'cre' ? ` | Saldo ${agendaFmt(d.saldo)} | ${d.payCount} ${d.payCount === 1 ? 'cobro' : 'cobros'}` : ` | ${d.credits.length} ${d.credits.length === 1 ? 'crédito' : 'créditos'}`}</small></div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-sm btn-primary" onclick="restoreFromTrash(${i})">RESTAURAR</button>
+                            <button class="btn btn-sm btn-danger" onclick="openTrashPurge(${i})">ELIMINAR</button>
+                        </div>
+                    </div>
+                    <details style="margin-top:8px;"><summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--primary);">Ver detalle</summary><div style="margin-top:6px;">${trashDetailHtml(d)}</div></details>
+                </div>`).join('') || '<p style="text-align:center; width:100%; padding:20px;">La papelera está vacía.</p>';
+        }
+        function openTrashPurge(which) {
+            if(!requireAction('edit')) return;
+            trashPurgeIdx = which === 'all' ? (db.trash || []).map((_, i) => i) : [Number(which)];
+            if(!trashPurgeIdx.length) return alert('La papelera ya está vacía.');
+            const r = GycRules.purgeTrash(db, trashPurgeIdx), sm = r.summary;
+            document.getElementById('tp-title').textContent = which === 'all' ? 'Vaciar la papelera' : 'Eliminar del todo';
+            const line = t => `<div style="margin-bottom:6px;">${t}</div>`;
+            document.getElementById('tp-body').innerHTML =
+                line(`${sm.items === 1 ? 'Se eliminará' : 'Se eliminarán'} <b>${sm.items}</b> ${sm.items === 1 ? 'registro' : 'registros'}: ${sm.clients} ${sm.clients === 1 ? 'cliente' : 'clientes'} y ${sm.credits} ${sm.credits === 1 ? 'crédito' : 'créditos'}.`)
+                + (sm.payments ? line(`También se ${sm.payments === 1 ? 'borrará <b>1</b> cobro' : 'borrarán <b>' + sm.payments + '</b> cobros'} (<b>${agendaFmt(sm.paymentTotal)}</b>). ${sm.payments === 1 ? 'Dejará' : 'Dejarán'} de contar en el arqueo, los reportes y la contabilidad.`) : '')
+                + (sm.pending > 0.005 ? line(`<span style="color:var(--danger)">⚠ Hay créditos con saldo pendiente por <b>${agendaFmt(sm.pending)}</b>. Esa deuda se perdería.</span>`) : '')
+                + (sm.orphanClients ? line('Algún cliente tiene créditos que se conservan; aparecerán como “Desconocido”.') : '')
+                + line('<b>Esta acción no se puede deshacer.</b> Antes se descargará una copia de respaldo de todos tus datos.');
+            const w = document.getElementById('tp-word'); w.value = ''; document.getElementById('tp-btn').disabled = true;
+            showModal('modal-trash-purge');
+            setTimeout(() => w.focus(), 50);
+        }
+        function confirmTrashPurge() {
+            if(!requireAction('edit')) return;
+            if(document.getElementById('tp-word').value.trim().toUpperCase() !== 'ELIMINAR') return;
+            const idx = trashPurgeIdx.filter(i => i < (db.trash || []).length); if(!idx.length) return closeModal();
+            downloadBackupFile(`GYC_ANTES_DE_VACIAR_PAPELERA_${new Date().getTime()}.json`, JSON.stringify(db));
+            const r = GycRules.purgeTrash(db, idx), sm = r.summary;
+            db.trash = r.trash; db.pag = r.pag; trashPurgeIdx = [];
+            log(`Eliminó definitivamente de la papelera: ${sm.clients} cliente(s), ${sm.credits} crédito(s)` + (sm.payments ? ` y ${sm.payments} cobro(s) por ${agendaFmt(sm.paymentTotal)}` : ''));
+            save(); closeModal(); renderTrash(); renderDash(); refreshReportIfOpen();
+        }
         function restoreFromTrash(i) {
             if(!requireAction('edit')) return;
             const item = db.trash.splice(i, 1)[0];

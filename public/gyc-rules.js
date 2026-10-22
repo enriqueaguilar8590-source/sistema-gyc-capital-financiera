@@ -114,6 +114,35 @@
         const edit = {fecha: stamp, usuario: user, nomAnterior: cur.nom, nomNuevo: name, telAnterior: cur.tel || '', telNuevo: phone, motivo: String(reason).trim()};
         return partners.map(p => p.id === id ? {...p, nom: name, tel: phone, ediciones: [...(p.ediciones || []), edit]} : p);
     }
+    // ---- Papelera: detalle y eliminación definitiva ----
+    const isRefi = p => p.tipo === 'refinanciamiento' || String(p.obs || '').startsWith('Cancelado por descuento en nuevo crédito');
+    function trashDetail(db, item) {
+        const d = item.data || {}, creditsAll = [...(db.cre || []), ...(db.trash || []).filter(x => x.type === 'cre').map(x => ({...x.data, __trash: true}))];
+        const payOf = ids => (db.pag || []).filter(p => ids.has(p.creId));
+        if(item.type === 'cli') {
+            const credits = creditsAll.filter(c => c.cliId === d.id), ids = new Set(credits.map(c => c.id)), pays = payOf(ids);
+            return {kind:'cli', id:d.id, title:d.nom || d.id, deleted:item.date || '', fields:[['Código',d.id],['Cédula',d.ced],['Teléfono',d.tel],['Dirección',d.dir],['Garantía',d.gar]].filter(f => f[1]),
+                credits: credits.map(c => ({id:c.id, cap:Number(c.cap)||0, saldo:Math.max(0,Number(c.saldo)||0), active:Number(c.saldo) > 0.005, inTrash:!!c.__trash, test:!!c.esPrueba})),
+                payCount: pays.length, payTotal: round2(pays.reduce((t,p) => t + (Number(p.t)||0), 0)), payments: [], loses: 'cliente'};
+        }
+        const cli = [...(db.cli || []), ...(db.trash || []).filter(x => x.type === 'cli').map(x => x.data)].find(c => c.id === d.cliId) || {};
+        const pays = payOf(new Set([d.id])), schedule = d.schedule || [];
+        return {kind:'cre', id:d.id, title:d.id, deleted:item.date || '', client: cli.nom || 'Cliente no disponible', cap:Number(d.cap)||0, total:Number(d.total)||0, saldo:Math.max(0,Number(d.saldo)||0), plazo:schedule.length || Number(d.plz) || 0,
+            paidInstallments: schedule.filter(isPaidItem).length, date: d.fecDes || d.date || '', test: !!d.esPrueba, intPct: d.intPct,
+            payCount: pays.length, payTotal: round2(pays.reduce((t,p) => t + (Number(p.t)||0), 0)), cashPayments: pays.filter(p => !isRefi(p) && Number(p.t) > 0).length,
+            payments: pays.slice().sort((a,b) => String(dateKey(b.fechaISO || b.f)).localeCompare(String(dateKey(a.fechaISO || a.f)))).map(p => ({id:p.id, fecha:p.fechaISO || p.f, t:Number(p.t)||0, m:Number(p.m)||0, refi:isRefi(p)}))};
+    }
+    // Permanent removal of trashed items. Deleting a credit also removes its payments (they would otherwise be orphaned
+    // and silently drop out of cash reports); deleting a client keeps its credits and payments untouched.
+    function purgeTrash(db, indexes) {
+        const pick = new Set(indexes), chosen = (db.trash || []).filter((_, i) => pick.has(i));
+        const creIds = new Set(chosen.filter(t => t.type === 'cre').map(t => t.data.id));
+        const removedPay = (db.pag || []).filter(p => creIds.has(p.creId));
+        return {trash: (db.trash || []).filter((_, i) => !pick.has(i)), pag: (db.pag || []).filter(p => !creIds.has(p.creId)),
+            summary: {items: chosen.length, clients: chosen.filter(t => t.type === 'cli').length, credits: creIds.size, payments: removedPay.length, paymentTotal: round2(removedPay.reduce((t,p) => t + (Number(p.t)||0), 0)),
+                cashPayments: removedPay.filter(p => !isRefi(p) && Number(p.t) > 0).length, pending: round2(chosen.filter(t => t.type === 'cre').reduce((t,x) => t + Math.max(0, Number(x.data.saldo)||0), 0)),
+                orphanClients: chosen.filter(t => t.type === 'cli' && [...(db.cre || [])].some(c => c.cliId === t.data.id)).length}};
+    }
     // Access lock for editing contributed capital. Only a salted PBKDF2 hash is stored, never the password itself.
     const PARTNER_LOCK = {user:'SociosGYL', salt:'e93149786d46e9feb07fbbb88db39446', iterations:210000, hash:'07a3608cffb4ae31e040afa2192f049b241ceaba94170a1e70168af272447387'};
     const utf8 = text => Uint8Array.from(unescape(encodeURIComponent(String(text))), c => c.charCodeAt(0));
@@ -265,5 +294,5 @@
         const contributed = partnerCapital + initialCapital;
         return {cash:round2(cash), portfolio:round2(portfolio), fixed:round2(fixed), assets:round2(assets), liabilities:round2(liabilities), equity:round2(equity), contributed:round2(contributed), withdrawals:round2(withdrawals), results:round2(equity - contributed + withdrawals)};
     }
-    root.GycRules = {applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);
