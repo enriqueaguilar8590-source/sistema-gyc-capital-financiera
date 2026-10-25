@@ -107,3 +107,26 @@ describe('payments in dollars',()=>{
   it('cash report keeps córdobas totals and adds the dollars received',()=>{const db={cre:[{id:'C'}],pag:[{creId:'C',fechaISO:'2026-10-20',t:550.06,usd:15.07,tc:36.5,mon:'USD',g:'a'},{creId:'C',fechaISO:'2026-10-20',t:100,g:'a'},{creId:'C',fechaISO:'2026-10-21',t:73,usd:2,tc:36.5,mon:'USD',g:'b'}]};const r=rules.cashReport(db,'2026-10-20','2026-10-20');expect([r.total,r.usd,r.usdCount,r.usdCordobas]).toEqual([650.06,15.07,1,550.06]);expect(rules.cashReport(db,'2026-10-20','2026-10-21','b')).toMatchObject({total:73,usd:2});expect(rules.cashReport({cre:[{id:'C'}],pag:[{creId:'C',fechaISO:'2026-10-20',t:10}]},'2026-10-20','2026-10-20')).toMatchObject({usd:0,usdCount:0});});
   it('payment SMS mentions dollars, rate and córdoba equivalent',()=>{const m=rules.paymentSms({empresa:'GYC Capital',cliente:'María Aguilar',monto:550.06,usd:15.07,tc:36.5,fecha:'21/10/2026',saldo:549.94,recibo:'RC0001'});expect(m).toBe('GYC Capital: Maria Aguilar, recibimos su pago de US$15.07 (C$550.06 a T/C 36.50) el 21/10/2026. Saldo pendiente: C$549.94. Recibo RC0001.');});
 });
+describe('contrato de crédito',()=>{
+  it('escribe los montos en letras',()=>{
+    expect(rules.montoEnLetras(6000)).toBe('SEIS MIL CÓRDOBAS');
+    expect(rules.montoEnLetras(8760)).toBe('OCHO MIL SETECIENTOS SESENTA CÓRDOBAS');
+    expect(rules.montoEnLetras(1)).toBe('UN CÓRDOBA');
+    expect(rules.montoEnLetras(21000)).toBe('VEINTIÚN MIL CÓRDOBAS');
+    expect(rules.montoEnLetras(100100)).toBe('CIEN MIL CIEN CÓRDOBAS');
+    expect(rules.montoEnLetras(1250.5)).toBe('MIL DOSCIENTOS CINCUENTA CÓRDOBAS CON 50/100');
+    expect(rules.montoEnLetras(1000000)).toBe('UN MILLÓN DE CÓRDOBAS');
+  });
+  it('convierte el plazo según la frecuencia',()=>{
+    expect(rules.plazoText(12,7)).toBe('3 meses');
+    expect(rules.plazoText(4,7)).toBe('1 mes');
+    expect(rules.plazoText(10,1)).toBe('10 días');
+    expect(rules.plazoText(6,30)).toBe('6 meses');
+  });
+  it('toma cuota, total y primer pago del plan de pago',()=>{
+    const sch=Array.from({length:12},(_,i)=>({n:i+1,date:'28/10/2026',amount:730}));
+    const d=rules.contractData({id:'CRE1',cliId:'GYC-013',cap:6000,intPct:46,total:8760,freq:7,plz:12,fecDes:'2026-10-21',schedule:sch,garTipo:'Prendaria',garValor:10000,garDesc:'Plancha'},{id:'GYC-013',nom:'DILENIA',ced:'081'},{rep:'Gabriel',cargo:'Gerente'});
+    expect([d.capital,d.interes,d.total,d.cuota,d.cuotas,d.plazo,d.frecuencia,d.interesPct]).toEqual(['C$6,000.00','C$2,760.00','C$8,760.00','C$730.00','12','3 meses','Semanal','46.0%']);
+    expect([d.emision,d.primerPago,d.garValor,d.totalLetras]).toEqual(['21/10/2026','28/10/2026','C$10,000.00','OCHO MIL SETECIENTOS SESENTA CÓRDOBAS']);
+  });
+});

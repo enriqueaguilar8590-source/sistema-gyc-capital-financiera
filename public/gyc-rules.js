@@ -310,5 +310,64 @@
         const contributed = partnerCapital + initialCapital;
         return {cash:round2(cash), portfolio:round2(portfolio), fixed:round2(fixed), assets:round2(assets), liabilities:round2(liabilities), equity:round2(equity), contributed:round2(contributed), withdrawals:round2(withdrawals), results:round2(equity - contributed + withdrawals)};
     }
-    root.GycRules = {DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    // --- Contrato de crédito: texto en letras y datos tomados del plan de pago ---
+    const UNI = ['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE','DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISÉIS','DIECISIETE','DIECIOCHO','DIECINUEVE','VEINTE','VEINTIUNO','VEINTIDÓS','VEINTITRÉS','VEINTICUATRO','VEINTICINCO','VEINTISÉIS','VEINTISIETE','VEINTIOCHO','VEINTINUEVE'];
+    const DEC = ['','','','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+    const CEN = ['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+    const apocope = s => s.replace(/VEINTIUNO$/, 'VEINTIÚN').replace(/UNO$/, 'UN');
+    function below1000(n) {
+        if(n === 100) return 'CIEN';
+        const c = Math.floor(n / 100), r = n % 100, parts = [];
+        if(c) parts.push(CEN[c]);
+        if(r < 30) { if(r) parts.push(UNI[r]); }
+        else { const d = Math.floor(r / 10), u = r % 10; parts.push(u ? DEC[d] + ' Y ' + UNI[u] : DEC[d]); }
+        return parts.join(' ');
+    }
+    function numberInWords(n) {
+        n = Math.floor(Number(n) || 0);
+        if(n === 0) return 'CERO';
+        const mill = Math.floor(n / 1e6), mil = Math.floor((n % 1e6) / 1000), rest = n % 1000, parts = [];
+        if(mill) parts.push(mill === 1 ? 'UN MILLÓN' : apocope(below1000(mill)) + ' MILLONES');
+        if(mil) parts.push(mil === 1 ? 'MIL' : apocope(below1000(mil)) + ' MIL');
+        if(rest) parts.push(below1000(rest));
+        return parts.join(' ');
+    }
+    function montoEnLetras(amount) {
+        const cents = Math.round((Number(amount) || 0) * 100), whole = Math.floor(cents / 100), cc = cents % 100;
+        const words = numberInWords(whole);
+        const noun = whole === 1 ? 'CÓRDOBA' : (whole >= 1e6 && whole % 1e6 === 0 ? 'DE CÓRDOBAS' : 'CÓRDOBAS');
+        return apocope(words) + ' ' + noun + (cc ? ' CON ' + String(cc).padStart(2, '0') + '/100' : '');
+    }
+    const FREQ_LABEL = {1:'Diario', 7:'Semanal', 15:'Quincenal', 30:'Mensual'};
+    function plazoText(count, freq) {
+        const days = (Number(count) || 0) * (Number(freq) || 0);
+        if(days < 25) return days + (days === 1 ? ' día' : ' días');
+        const m = Math.round(days / 30);
+        return m + (m === 1 ? ' mes' : ' meses');
+    }
+    const cMoney = n => 'C$' + (Number(n) || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    function displayDate(value) {
+        const k = dateKey(value);
+        return k ? k.split('-').reverse().join('/') : '';
+    }
+    // Todos los datos del contrato salen del crédito ya calculado (plan de pago), sin recalcular nada.
+    function contractData(c, cli, cfg) {
+        cli = cli || {}; cfg = cfg || {};
+        const sch = c.schedule || [], cap = Number(c.cap) || 0, total = Number(c.total) || 0;
+        const count = sch.length || Number(c.plz) || 0;
+        const cuota = sch.length ? Number(sch[0].amount) : (Number(c.cuota) || (count ? total / count : 0));
+        const neto = c.descuento > 0 ? Number(c.neto) || 0 : cap;
+        return {
+            nombre: cli.nom || '', cedula: cli.ced || '', codigo: cli.id || c.cliId || '', credito: c.id || '',
+            emision: displayDate(c.fecDes || c.date), primerPago: displayDate(sch[0] && sch[0].date),
+            capital: cMoney(cap), capitalLetras: montoEnLetras(cap),
+            interesPct: (Number(c.intPct) || 0).toFixed(1) + '%', interes: cMoney(total - cap),
+            total: cMoney(total), totalLetras: montoEnLetras(total),
+            plazo: plazoText(count, c.freq), frecuencia: FREQ_LABEL[c.freq] || '', cuotas: String(count), cuota: cMoney(cuota),
+            descuento: c.descuento > 0 ? cMoney(c.descuento) : '', neto: cMoney(neto), netoLetras: montoEnLetras(neto),
+            garTipo: c.garTipo || '', garValor: Number(c.garValor) > 0 ? cMoney(c.garValor) : '', garDesc: c.garDesc || '',
+            representante: cfg.rep || '', cargo: cfg.cargo || ''
+        };
+    }
+    root.GycRules = {montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

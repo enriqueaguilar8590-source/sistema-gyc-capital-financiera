@@ -568,6 +568,18 @@
             }
         }
 
+        /* Contrato de crédito (se imprime en #print-letter, igual que el plan de pago) */
+        #print-letter .ct { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#000; }
+        #print-letter .ct td { border:1px solid #000; padding:3px 6px; font-size:11px; color:#000; background:#fff; vertical-align:middle; word-wrap:break-word; }
+        #print-letter .ct td.ct-h { background:#1e5b38 !important; color:#fff !important; font-weight:700; text-align:center; font-size:13px; padding:6px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        #print-letter .ct td.ct-s { background:#e8f0ea !important; color:#1e5b38 !important; font-weight:700; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        #print-letter .ct td.ct-l { font-weight:700; width:17%; }
+        #print-letter .ct td.ct-c { text-align:center; }
+        #print-letter .ct td.ct-r { text-align:right; font-weight:700; }
+        #print-letter .ct td.ct-p { text-align:justify; line-height:1.5; padding:8px 8px; }
+        #print-letter .ct-sign { display:flex; justify-content:space-around; gap:30px; margin-top:42px; text-align:center; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#000; }
+        #print-letter .ct-sign > div { flex:1; }
+        #print-letter .ct-line { border-top:1px solid #000; margin:38px 8px 6px; }
         .badge-test { background: #6366f1; color: white; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: bold; }
         .tab-group { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .tab-group::-webkit-scrollbar { display: none; }
@@ -970,6 +982,8 @@
                         <label>Teléfono</label><input type="text" id="cfg-tel">
                         <label>Dirección</label><input type="text" id="cfg-dir">
                         <label>Tipo de cambio por defecto (C$ por US$)</label><input type="number" id="cfg-tc" step="0.01" min="1" placeholder="36.50">
+                        <label>Representante que firma el contrato</label><input type="text" id="cfg-rep">
+                        <label>Cargo del representante</label><input type="text" id="cfg-cargo">
                         <label>Frase Recibo</label><textarea id="cfg-frase" rows="3"></textarea>
                         <button class="btn btn-primary" onclick="saveCfg()">GUARDAR EMPRESA</button>
                     </div>
@@ -1086,6 +1100,15 @@
                     <div style="display:flex; justify-content:space-between;"><span>Monto neto a entregar:</span><b id="refi-neto" style="color:var(--primary)">C$ 0.00</b></div>
                     <small style="color:var(--text-muted)">El crédito nuevo, sus intereses, cuotas y fechas se calculan sobre el capital completo.</small>
                 </div>
+            </div>
+
+            <div class="card" style="background:var(--bg-input); margin:10px 0;">
+                <label>Garantía (para el contrato)</label>
+                <div class="grid-2">
+                    <div><input type="text" id="cre-gar-tipo" list="cre-gar-tipos" placeholder="Tipo (ej. Prendaria)"><datalist id="cre-gar-tipos"><option value="Prendaria"><option value="Fiduciaria"><option value="Hipotecaria"><option value="Sin garantía"></datalist></div>
+                    <div><input type="number" id="cre-gar-val" min="0" step="0.01" placeholder="Valor estimado (C$)"></div>
+                </div>
+                <textarea id="cre-gar-desc" rows="2" placeholder="Descripción de los bienes en garantía" oninput="this.dataset.touched='1'"></textarea>
             </div>
 
             <label>Frecuencia de Pago</label>
@@ -1264,7 +1287,7 @@
         <div class="modal-content" style="max-width:900px; background:white; color:black;">
             <div id="print-letter"></div>
             <div class="no-print" style="margin-top:25px; display:flex; gap:15px; border-top: 1px solid #ccc; padding-top: 20px;">
-                <button class="btn btn-primary" onclick="window.print()" style="flex: 2;">IMPRIMIR PLAN COMPLETO</button>
+                <button class="btn btn-primary" id="btn-print-letter" onclick="window.print()" style="flex: 2;">IMPRIMIR PLAN COMPLETO</button>
                 <button class="btn btn-sec" style="color: black; flex: 1;" onclick="closeModal()">CERRAR</button>
             </div>
         </div>
@@ -1900,6 +1923,7 @@
                         <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; margin-top:15px;">
                             ${c.saldo > 0 ? `<button class="btn btn-sm btn-primary" onclick="payPopup('${c.id}')">💵 COBRAR</button>` : ''}
                             <button class="btn btn-sm btn-sec" onclick="accountStatement('${c.id}')">📄 PLAN</button>
+                            <button class="btn btn-sm btn-sec" style="grid-column:1/-1;" onclick="printContract('${c.id}')">📜 CONTRATO</button>
                             <button class="btn btn-sm btn-sec" onclick="openCreModal('${c.id}')">✏️ EDITAR</button>
                             <button class="btn btn-sm btn-danger" onclick="moveToTrash('cre', '${c.id}')">🗑️</button>
                         </div>
@@ -1924,6 +1948,10 @@
                 document.getElementById('cre-plz').value = c.plz || c.schedule.length;
                 document.getElementById('cre-freq').value = c.freq;
                 document.getElementById('cre-test').value = c.esPrueba ? 'si' : 'no';
+                document.getElementById('cre-gar-tipo').value = c.garTipo || '';
+                document.getElementById('cre-gar-val').value = c.garValor || '';
+                document.getElementById('cre-gar-desc').value = c.garDesc || '';
+                document.getElementById('cre-gar-desc').dataset.touched = '1';
                 document.getElementById('cre-fec-des').value = c.fecDes || today;
                 document.getElementById('cre-modal-title').innerText = "Editar Crédito " + id;
                 document.getElementById('btn-cre-save').innerText = "GUARDAR CAMBIOS";
@@ -1932,6 +1960,10 @@
                 document.getElementById('btn-cre-save').innerText = "DESEMBOLSAR";
                 document.getElementById('cre-cap').value = "";
                 document.getElementById('cre-test').value = "no";
+                document.getElementById('cre-gar-tipo').value = 'Prendaria';
+                document.getElementById('cre-gar-val').value = '';
+                document.getElementById('cre-gar-desc').value = '';
+                document.getElementById('cre-gar-desc').dataset.touched = '';
             }
             refreshRefi();
             showModal('modal-cre');
@@ -1943,6 +1975,8 @@
             const cliId = document.getElementById('cre-cli-sel').value;
             const editing = !!document.getElementById('cre-edit-id').value;
             document.getElementById('refi-box').classList.toggle('hidden', editing);
+            const garDesc = document.getElementById('cre-gar-desc');
+            if(!editing && garDesc && !garDesc.dataset.touched) garDesc.value = db.cli.find(x => x.id === cliId)?.gar || '';
             sel.innerHTML = '<option value="">No descontar</option>' + db.cre
                 .filter(c => c.cliId === cliId && parseFloat(c.saldo) > 0.005)
                 .map(c => `<option value="${c.id}">${c.id} - saldo C$ ${parseFloat(c.saldo).toFixed(2)}</option>`).join('');
@@ -2001,6 +2035,10 @@
             const freq = parseInt(document.getElementById('cre-freq').value);
             const fecDes = document.getElementById('cre-fec-des').value;
             const esPrueba = document.getElementById('cre-test').value === 'si';
+            const garTipo = document.getElementById('cre-gar-tipo').value.trim();
+            const garValor = parseFloat(document.getElementById('cre-gar-val').value) || 0;
+            const garDesc = document.getElementById('cre-gar-desc').value.trim();
+            let contractId = null;
 
             if(!cap || !plz || isNaN(cap)) return alert("Complete los datos financieros correctamente");
 
@@ -2038,7 +2076,7 @@
                 const pagadoPreviamente = old.total - old.saldo;
                 db.cre[idx] = { 
                     ...old, cliId, cap, intPct, total, saldo: total - pagadoPreviamente, 
-                    freq, schedule, fecDes, plz, esPrueba 
+                    freq, schedule, fecDes, plz, esPrueba, garTipo, garValor, garDesc
                 };
                 log("Editó crédito: " + editId);
             } else {
@@ -2051,8 +2089,10 @@
                     id: newId, cliId, cap, intPct, total, saldo: total, cuota, freq, 
                     schedule, date: new Date().toLocaleDateString(), fecDes, plz, esPrueba,
                     moraRefDate: null, moraPaidInCycle: 0,
-                    refiDe: oldCre ? oldCre.id : null, descuento, neto: cap - descuento
+                    refiDe: oldCre ? oldCre.id : null, descuento, neto: cap - descuento,
+                    garTipo, garValor, garDesc
                 });
+                contractId = newId;
                 if(oldCre && descuento > 0) {
                     // Cancela el crédito anterior con el descuento (queda registrado como pago)
                     const ratio = oldCre.total > 0 ? (oldCre.total - oldCre.cap) / oldCre.total : 0;
@@ -2075,6 +2115,7 @@
                 log("Desembolsó crédito: " + newId);
             }
             save(); closeModal(); renderCre(); renderDash();
+            if(contractId) printContract(contractId); // el contrato se genera de una vez al desembolsar
         }
 
         // --- LÓGICA DE COBROS Y MORA (CALENDARIO NORMALIZADO) ---
@@ -2513,6 +2554,52 @@
                     </table>
                 </div>
             `;
+            document.getElementById('btn-print-letter').innerText = 'IMPRIMIR PLAN COMPLETO';
+            showModal('modal-carta');
+        }
+
+        // --- CONTRATO DE CRÉDITO (misma estructura del modelo, datos tomados del plan de pago) ---
+        function printContract(id) {
+            const c = db.cre.find(x => x.id === id);
+            if(!c) return;
+            const cli = db.cli.find(x => x.id === c.cliId) || {};
+            const d = GycRules.contractData(c, cli, { rep: db.cfg.rep ?? 'Gabriel Enrique Aguilar Ortega', cargo: db.cfg.cargo ?? 'Gerente de Créditos' });
+            const e = escapeText, empresa = e((db.cfg.name || 'GYC CAPITAL').toUpperCase());
+            const refi = d.descuento ? ` Del monto del crédito se descontó el saldo anterior de ${e(d.descuento)}, por lo que el monto neto entregado fue de ${e(d.neto)} (${e(d.netoLetras)}).` : '';
+            document.getElementById('print-letter').innerHTML = `
+                <table class="ct">
+                    <tr><td class="ct-h" colspan="4" style="font-size:17px;">${empresa}</td></tr>
+                    <tr><td class="ct-c" colspan="4" style="font-weight:700;">CONTRATO DE CRÉDITO | RECIBO DE DESEMBOLSO | ACEPTACIÓN DE GARANTÍA</td></tr>
+                    <tr><td class="ct-s" colspan="4">A. DATOS DEL CLIENTE</td></tr>
+                    <tr><td class="ct-l">Nombre:</td><td class="ct-c">${e(d.nombre)}</td><td class="ct-l">No. Cliente:</td><td class="ct-c">${e(d.codigo)}</td></tr>
+                    <tr><td class="ct-l">Cédula:</td><td class="ct-c">${e(d.cedula)}</td><td class="ct-l">Fecha Emisión:</td><td class="ct-c">${e(d.emision)}</td></tr>
+                    <tr><td class="ct-s" colspan="4">B. CONDICIONES FINANCIERAS DEL CRÉDITO</td></tr>
+                    <tr><td class="ct-l">Monto Crédito:</td><td class="ct-r">${e(d.capital)}</td><td class="ct-l">Porcentaje Interés</td><td style="text-align:right;">${e(d.interesPct)}</td></tr>
+                    <tr><td class="ct-l">Plazo:</td><td class="ct-c">${e(d.plazo)}</td><td class="ct-l">Frecuencia:</td><td class="ct-c">${e(d.frecuencia)}</td></tr>
+                    <tr><td class="ct-l">Interés Total:</td><td style="text-align:right;">${e(d.interes)}</td><td class="ct-l">Total a Pagar</td><td class="ct-r">${e(d.total)}</td></tr>
+                    <tr><td class="ct-l">No. de Cuotas:</td><td style="text-align:right;">${e(d.cuotas)}</td><td class="ct-l">Valor de Cuota:</td><td class="ct-r">${e(d.cuota)}</td></tr>
+                    <tr><td class="ct-l">1er Pago:</td><td class="ct-c" colspan="3">${e(d.primerPago)}</td></tr>
+                    <tr><td class="ct-l">Monto Letras:</td><td colspan="3" style="font-style:italic;">(${e(d.capitalLetras)})</td></tr>
+                    <tr><td class="ct-l">Total Letras:</td><td colspan="3" style="font-style:italic;">(${e(d.totalLetras)})</td></tr>
+                    <tr><td class="ct-s" colspan="4">C. CONTRATO DE CRÉDITO Y DECLARACIÓN DE OBLIGACIONES</td></tr>
+                    <tr><td class="ct-p" colspan="4">Por el presente documento, el CLIENTE declara haber recibido a su entera satisfacción de ${empresa} el monto indicado en las condiciones financieras de este contrato. El CLIENTE se reconoce deudor e incondicionalmente obligado a pagar a ${empresa} la suma total pactada (Capital más Intereses), mediante el número de cuotas y en las fechas de pago establecidas en el presente instrumento.</td></tr>
+                    <tr><td class="ct-p" colspan="4">Asimismo, el CLIENTE declara que la información proporcionada a ${empresa} es verídica y se compromete a mantenerla actualizada. En caso de incumplimiento o mora en el pago de una o más cuotas en las fechas convenidas, ${empresa} queda facultada legalmente para ejercer las acciones de cobro extrajudicial o judicial correspondientes, pudiendo aplicarse intereses moratorios y cargos por gestión de cobro conforme a lo pactado y en estricto apego a la legislación aplicable en la República de Nicaragua.</td></tr>
+                    <tr><td class="ct-s" colspan="4">D. RECIBO DE DESEMBOLSO</td></tr>
+                    <tr><td class="ct-p" colspan="4">El cliente ${e(d.nombre)} (Cédula No. ${e(d.cedula)}) declara haber recibido a su entera satisfacción de ${empresa} la cantidad de ${e(d.neto)} (${e(d.netoLetras)}), correspondiente al desembolso efectivo del crédito otorgado, quedando plenamente reconocido dicho monto como obligación firme a su cargo bajo las condiciones establecidas en el presente contrato.${refi}</td></tr>
+                    <tr><td class="ct-s" colspan="4">E. GARANTÍA ENTREGADA / ACEPTACIÓN</td></tr>
+                    <tr><td class="ct-l">Tipo Garantía:</td><td class="ct-c">${e(d.garTipo)}</td><td class="ct-l" style="text-align:center;">Valor Estimado:</td><td class="ct-r">${e(d.garValor)}</td></tr>
+                    <tr><td class="ct-l">Descripción:</td><td colspan="3">${e(d.garDesc)}</td></tr>
+                    <tr><td class="ct-p" colspan="4">El CLIENTE declara bajo protesta de decir verdad que los bienes ofrecidos en garantía son de su exclusiva propiedad, se encuentran libres de todo gravamen o embargo y posee plena facultad legal para disponer de ellos. El CLIENTE acepta que la constitución, custodia, ejecución o eventual realización de la garantía se sujetarán de manera estricta a las normativas y leyes vigentes aplicables en la materia.</td></tr>
+                    <tr><td class="ct-s" colspan="4">F. FIRMAS DE CONFORMIDAD Y ACEPTACIÓN</td></tr>
+                </table>
+                <div class="ct-sign">
+                    <div><b>CLIENTE / DEUDOR</b><div class="ct-line"></div>Nombre: ${e(d.nombre)}<br><br>Cédula: ${e(d.cedula)}</div>
+                    <div><b>POR ${empresa}</b><div class="ct-line"></div>Representante: ${e(d.representante)}<br><br>Cargo: ${e(d.cargo)}</div>
+                </div>
+                <p style="text-align:center; font-style:italic; font-size:10px; margin-top:34px; font-family:Arial,Helvetica,sans-serif;">Documento generado por ${empresa} — Copia para el Deudor y Archivo Institucional</p>
+            `;
+            document.getElementById('btn-print-letter').innerText = 'IMPRIMIR CONTRATO';
+            log('Generó contrato del crédito ' + id);
             showModal('modal-carta');
         }
 
@@ -2667,6 +2754,8 @@
             document.getElementById('cfg-dir').value = db.cfg.dir;
             document.getElementById('cfg-tc').value = Number(db.cfg.tc) > 0 ? Number(db.cfg.tc).toFixed(2) : '';
             document.getElementById('cfg-frase').value = db.cfg.frase;
+            document.getElementById('cfg-rep').value = db.cfg.rep ?? 'Gabriel Enrique Aguilar Ortega';
+            document.getElementById('cfg-cargo').value = db.cfg.cargo ?? 'Gerente de Créditos';
             document.getElementById('seq-cli-pref').value = db.cfg.secuencias.cliPref;
             document.getElementById('seq-cli-next').value = db.cfg.secuencias.cliNext;
             document.getElementById('seq-cre-pref').value = db.cfg.secuencias.crePref;
@@ -2681,6 +2770,8 @@
             const tcCfg = parseFloat(document.getElementById('cfg-tc').value);
             if(GycRules.validRate(tcCfg)) db.cfg.tc = Math.round(tcCfg * 100) / 100; else delete db.cfg.tc;
             db.cfg.frase = document.getElementById('cfg-frase').value;
+            db.cfg.rep = document.getElementById('cfg-rep').value.trim();
+            db.cfg.cargo = document.getElementById('cfg-cargo').value.trim();
             save(); alert("Configuración de empresa guardada.");
             init();
         }
