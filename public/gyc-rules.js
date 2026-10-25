@@ -358,7 +358,7 @@
         const cuota = sch.length ? Number(sch[0].amount) : (Number(c.cuota) || (count ? total / count : 0));
         const neto = c.descuento > 0 ? Number(c.neto) || 0 : cap;
         return {
-            nombre: cli.nom || '', cedula: cli.ced || '', codigo: cli.id || c.cliId || '', credito: c.id || '',
+            nombre: cli.nom || '', cedula: cli.ced || '', codigo: cli.id || c.cliId || '', credito: c.id || '', contrato: c.contrato || '',
             emision: displayDate(c.fecDes || c.date), primerPago: displayDate(sch[0] && sch[0].date),
             capital: cMoney(cap), capitalLetras: montoEnLetras(cap),
             interesPct: (Number(c.intPct) || 0).toFixed(1) + '%', interes: cMoney(total - cap),
@@ -366,8 +366,47 @@
             plazo: plazoText(count, c.freq), frecuencia: FREQ_LABEL[c.freq] || '', cuotas: String(count), cuota: cMoney(cuota),
             descuento: c.descuento > 0 ? cMoney(c.descuento) : '', neto: cMoney(neto), netoLetras: montoEnLetras(neto),
             garTipo: c.garTipo || '', garValor: Number(c.garValor) > 0 ? cMoney(c.garValor) : '', garDesc: c.garDesc || '',
-            representante: cfg.rep || '', cargo: cfg.cargo || ''
+            representante: cfg.rep || '', cargo: cfg.cargo || '',
+            fiador: fiadorActivo(c) ? {nombre: String(c.fiador.nom).trim(), cedula: String(c.fiador.ced).trim()} : null
         };
     }
-    root.GycRules = {montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    // --- Fiador opcional: se guarda aparte del cliente, dentro del propio crédito ---
+    const fiadorActivo = c => !!(c && c.fiador && c.fiador.activo === true && String(c.fiador.nom || '').trim() && String(c.fiador.ced || '').trim());
+    function validFiador(f, clientCed) {
+        if(!f || !f.activo) return '';
+        if(!String(f.nom || '').trim()) return 'Escriba el nombre completo del fiador.';
+        if(!String(f.ced || '').trim()) return 'Escriba el número de cédula del fiador.';
+        const norm = v => String(v || '').replace(/[\s-]/g, '').toUpperCase();
+        if(clientCed && norm(f.ced) === norm(clientCed)) return 'El fiador no puede ser el mismo cliente (la cédula coincide).';
+        return '';
+    }
+    // --- Número de contrato: correlativo, único y nunca reutilizado ---
+    const CONTRACT_PREF = 'GYC-', CONTRACT_PAD = 3;
+    const allCredits = db => [...(db.cre || []), ...(db.trash || []).filter(x => x.type === 'cre').map(x => x.data).filter(Boolean)];
+    const contractPref = db => (db && db.cfg && db.cfg.secuencias && db.cfg.secuencias.conPref) || CONTRACT_PREF;
+    const contractSeq = (db, num) => { const pref = contractPref(db), t = String(num || '').toUpperCase(); const m = t.startsWith(pref.toUpperCase()) ? /^\d+$/.exec(t.slice(pref.length)) : null; return m ? Number(m[0]) : 0; };
+    const contractLabel = (db, n) => contractPref(db) + String(n).padStart(CONTRACT_PAD, '0');
+    // El siguiente número es el mayor entre el contador guardado y el último usado (incluye papelera), más uno.
+    function nextContractNumber(db) {
+        const seq = (db.cfg && db.cfg.secuencias) || {};
+        const maxUsed = allCredits(db).reduce((m, c) => Math.max(m, contractSeq(db, c.contrato)), 0);
+        const n = Math.max(Number(seq.conNext) || 1, maxUsed + 1);
+        return {n, id: contractLabel(db, n)};
+    }
+    // Asigna número solo si el crédito aún no tiene; nunca cambia uno existente. Avanza el contador guardado.
+    function assignContractNumber(db, c, wanted) {
+        if(!c || c.contrato) return c ? c.contrato : '';
+        let id, n;
+        const w = String(wanted || '').trim().toUpperCase();
+        if(w) {
+            if(contractTaken(db, w, c.id)) return '';
+            id = w; n = contractSeq(db, w);
+        } else { const nx = nextContractNumber(db); id = nx.id; n = nx.n; }
+        c.contrato = id;
+        db.cfg = db.cfg || {}; db.cfg.secuencias = db.cfg.secuencias || {};
+        db.cfg.secuencias.conNext = Math.max(Number(db.cfg.secuencias.conNext) || 1, (n || 0) + 1, nextContractNumber(db).n);
+        return id;
+    }
+    const contractTaken = (db, num, exceptId) => allCredits(db).some(c => c.id !== exceptId && c.contrato && String(c.contrato).toUpperCase() === String(num).toUpperCase());
+    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

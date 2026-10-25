@@ -569,17 +569,32 @@
         }
 
         /* Contrato de crédito (se imprime en #print-letter, igual que el plan de pago) */
-        #print-letter .ct { width:100%; min-width:0; table-layout:fixed; border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#000; }
-        #print-letter .ct td { border:1px solid #000; padding:3px 6px; font-size:11px; color:#000; background:#fff; vertical-align:middle; word-wrap:break-word; }
-        #print-letter .ct td.ct-h { background:#1e5b38 !important; color:#fff !important; font-weight:700; text-align:center; font-size:13px; padding:6px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-        #print-letter .ct td.ct-s { background:#e8f0ea !important; color:#1e5b38 !important; font-weight:700; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-        #print-letter .ct td.ct-l { font-weight:700; width:17%; }
-        #print-letter .ct td.ct-c { text-align:center; }
-        #print-letter .ct td.ct-r { text-align:right; font-weight:700; }
-        #print-letter .ct td.ct-p { text-align:justify; line-height:1.5; padding:8px 8px; }
-        #print-letter .ct-sign { display:flex; justify-content:space-around; gap:30px; margin-top:42px; text-align:center; font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#000; }
-        #print-letter .ct-sign > div { flex:1; }
-        #print-letter .ct-line { border-top:1px solid #000; margin:38px 8px 6px; }
+        @page contrato { size: letter; margin: 14mm 15mm; }
+        #print-letter .ct-doc { page: contrato; font-family: Arial, Helvetica, sans-serif; color: #1f2933; font-size: 10.5pt; line-height: 1.45; text-align: left; }
+        #print-letter .ct-band { background: #1e5b38 !important; color: #fff !important; text-align: center; padding: 14px 10px; font-size: 22pt; font-weight: 700; letter-spacing: .18em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        #print-letter .ct-sub { text-align: center; font-size: 9.5pt; font-weight: 700; letter-spacing: .06em; color: #1e5b38; padding: 10px 6px 16px; }
+        #print-letter .ct-sec { border: 1px solid #7a9a86; margin: 0 0 12px; break-inside: avoid; page-break-inside: avoid; }
+        #print-letter .ct-sec-h { background: #e2ece5 !important; color: #1e5b38 !important; font-weight: 700; text-align: center; letter-spacing: .05em; padding: 7px 8px; font-size: 10.5pt; border-bottom: 1px solid #7a9a86; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        #print-letter .ct-doc .ct-tbl { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; }
+        #print-letter .ct-doc .ct-tbl td { border: 1px solid #d3ddd6 !important; padding: 7px 10px !important; color: #1f2933 !important; font-size: 10.5pt; vertical-align: middle; overflow-wrap: anywhere; background: #fff; }
+        #print-letter .ct-doc .ct-tbl tr:first-child td { border-top: 0 !important; }
+        #print-letter .ct-doc .ct-tbl tr:last-child td { border-bottom: 0 !important; }
+        #print-letter .ct-doc .ct-tbl td:first-child { border-left: 0 !important; }
+        #print-letter .ct-doc .ct-tbl td:last-child { border-right: 0 !important; }
+        #print-letter .ct-doc .ct-tbl td.ct-l { font-weight: 700; background: #f4f8f5 !important; width: 24%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        #print-letter .ct-doc .ct-tbl td.ct-m { text-align: right; font-variant-numeric: tabular-nums; }
+        #print-letter .ct-doc .ct-tbl td.ct-mb { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e5b38 !important; }
+        #print-letter .ct-doc .ct-tbl td.ct-c { text-align: center; }
+        #print-letter .ct-doc .ct-tbl td.ct-i { font-style: italic; }
+        #print-letter .ct-p { padding: 11px 16px; text-align: justify; line-height: 1.55; font-size: 10.5pt; }
+        #print-letter .ct-p + .ct-p { border-top: 1px solid #d3ddd6; }
+        #print-letter .ct-sign { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 26px; padding: 22px 28px 20px; text-align: center; font-size: 10.5pt; }
+        #print-letter .ct-sign > div { break-inside: avoid; page-break-inside: avoid; }
+        #print-letter .ct-sign > div.ct-sign-wide { grid-column: 1 / -1; justify-self: center; width: calc(50% - 20px); }
+        #print-letter .ct-sign .ct-role { font-weight: 700; color: #1e5b38; letter-spacing: .04em; font-size: 10pt; }
+        #print-letter .ct-sign .ct-line { border-top: 1px solid #1f2933; margin: 54px 4px 8px; }
+        #print-letter .ct-sign .ct-who { line-height: 1.7; }
+        #print-letter .ct-foot { text-align: center; font-style: italic; font-size: 8.5pt; color: #52606d; margin-top: 8px; padding-bottom: 2px; break-inside: avoid; }
         .badge-test { background: #6366f1; color: white; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: bold; }
         .tab-group { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .tab-group::-webkit-scrollbar { display: none; }
@@ -1083,6 +1098,7 @@
                     <label>Fecha Desembolso</label><input type="date" id="cre-fec-des" oninput="calcPreviewCre()">
                     <label>Tipo de Registro</label>
                     <select id="cre-test"><option value="no">CRÉDITO REAL</option><option value="si">CRÉDITO DE PRUEBA</option></select>
+                    <label>N.º de contrato</label><input type="text" id="cre-contrato" autocomplete="off">
                 </div>
                 <div>
                     <label>Capital (C$)</label><input type="number" id="cre-cap" oninput="calcPreviewCre()" placeholder="0.00">
@@ -1109,6 +1125,18 @@
                     <div><input type="number" id="cre-gar-val" min="0" step="0.01" placeholder="Valor estimado (C$)"></div>
                 </div>
                 <textarea id="cre-gar-desc" rows="2" placeholder="Descripción de los bienes en garantía" oninput="this.dataset.touched='1'"></textarea>
+            </div>
+
+            <div class="card" style="background:var(--bg-input); margin:10px 0;">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin:0;"><input type="checkbox" id="cre-fia-on" style="width:auto; margin:0;" onchange="toggleFiador()"> ¿Este crédito requiere fiador?</label>
+                <div id="cre-fia-box" class="hidden" style="margin-top:12px;">
+                    <b style="font-size:12px; color:var(--primary);">DATOS DEL FIADOR</b>
+                    <label>Nombre completo del fiador</label><input type="text" id="cre-fia-nom">
+                    <label>Número de cédula</label><input type="text" id="cre-fia-ced">
+                    <label>Dirección domiciliar</label><textarea id="cre-fia-dir" rows="2"></textarea>
+                    <label>Teléfono</label><input type="text" id="cre-fia-tel">
+                    <label>Observaciones (opcional)</label><textarea id="cre-fia-obs" rows="2"></textarea>
+                </div>
             </div>
 
             <label>Frecuencia de Pago</label>
@@ -1952,6 +1980,8 @@
                 document.getElementById('cre-gar-val').value = c.garValor || '';
                 document.getElementById('cre-gar-desc').value = c.garDesc || '';
                 document.getElementById('cre-gar-desc').dataset.touched = '1';
+                loadFiadorForm(c.fiador);
+                setContratoField(c);
                 document.getElementById('cre-fec-des').value = c.fecDes || today;
                 document.getElementById('cre-modal-title').innerText = "Editar Crédito " + id;
                 document.getElementById('btn-cre-save').innerText = "GUARDAR CAMBIOS";
@@ -1964,9 +1994,38 @@
                 document.getElementById('cre-gar-val').value = '';
                 document.getElementById('cre-gar-desc').value = '';
                 document.getElementById('cre-gar-desc').dataset.touched = '';
+                loadFiadorForm(null);
+                setContratoField(null);
             }
             refreshRefi();
             showModal('modal-cre');
+        }
+
+        // --- FIADOR OPCIONAL Y NÚMERO DE CONTRATO (formulario de crédito) ---
+        function toggleFiador() {
+            // Solo muestra u oculta: los datos escritos se conservan en los campos.
+            document.getElementById('cre-fia-box').classList.toggle('hidden', !document.getElementById('cre-fia-on').checked);
+        }
+        function loadFiadorForm(f) {
+            f = f || {};
+            document.getElementById('cre-fia-on').checked = f.activo === true;
+            document.getElementById('cre-fia-nom').value = f.nom || '';
+            document.getElementById('cre-fia-ced').value = f.ced || '';
+            document.getElementById('cre-fia-dir').value = f.dir || '';
+            document.getElementById('cre-fia-tel').value = f.tel || '';
+            document.getElementById('cre-fia-obs').value = f.obs || '';
+            toggleFiador();
+        }
+        function readFiadorForm() {
+            const v = id => document.getElementById(id).value.trim();
+            const f = { activo: document.getElementById('cre-fia-on').checked, nom: v('cre-fia-nom'), ced: v('cre-fia-ced'), dir: v('cre-fia-dir'), tel: v('cre-fia-tel'), obs: v('cre-fia-obs') };
+            return f;
+        }
+        function setContratoField(c) {
+            const el = document.getElementById('cre-contrato');
+            if(c && c.contrato) { el.value = c.contrato; el.readOnly = true; el.placeholder = ''; }
+            else if(c) { el.value = ''; el.readOnly = false; el.placeholder = 'Ej. GYC-013 (vacío = siguiente automático)'; }
+            else { el.value = ''; el.readOnly = true; el.placeholder = 'Se asigna al desembolsar: ' + GycRules.nextContractNumber(db).id; }
         }
 
         // --- DESCUENTO DE SALDO ANTERIOR EN NUEVO DESEMBOLSO ---
@@ -2041,6 +2100,13 @@
             let contractId = null;
 
             if(!cap || !plz || isNaN(cap)) return alert("Complete los datos financieros correctamente");
+            const fiadorData = readFiadorForm();
+            const fiadorErr = GycRules.validFiador(fiadorData, db.cli.find(x => x.id === cliId)?.ced);
+            if(fiadorErr) return alert(fiadorErr);
+            const oldForContract = editId ? db.cre.find(x => x.id === editId) : null;
+            const typedContract = document.getElementById('cre-contrato').value.trim();
+            if(oldForContract && !oldForContract.contrato && typedContract && GycRules.contractTaken(db, typedContract, editId)) return alert("Ese número de contrato ya está en uso por otro contrato.");
+            const fiador = (fiadorData.activo || fiadorData.nom || fiadorData.ced || fiadorData.dir || fiadorData.tel || fiadorData.obs || (oldForContract && oldForContract.fiador)) ? fiadorData : null;
 
             const total = cap + (cap * (intPct / 100));
             const cuota = total / plz;
@@ -2076,8 +2142,10 @@
                 const pagadoPreviamente = old.total - old.saldo;
                 db.cre[idx] = { 
                     ...old, cliId, cap, intPct, total, saldo: total - pagadoPreviamente, 
-                    freq, schedule, fecDes, plz, esPrueba, garTipo, garValor, garDesc
+                    freq, schedule, fecDes, plz, esPrueba, garTipo, garValor, garDesc,
+                    ...(fiador ? { fiador } : {})
                 };
+                if(!old.contrato && typedContract) GycRules.assignContractNumber(db, db.cre[idx], typedContract);
                 log("Editó crédito: " + editId);
             } else {
                 const refiId = allowed('edit') ? document.getElementById('cre-refi').value : '';
@@ -2090,8 +2158,10 @@
                     schedule, date: new Date().toLocaleDateString(), fecDes, plz, esPrueba,
                     moraRefDate: null, moraPaidInCycle: 0,
                     refiDe: oldCre ? oldCre.id : null, descuento, neto: cap - descuento,
-                    garTipo, garValor, garDesc
+                    garTipo, garValor, garDesc,
+                    ...(fiador ? { fiador } : {})
                 });
+                GycRules.assignContractNumber(db, db.cre[db.cre.length - 1]);
                 contractId = newId;
                 if(oldCre && descuento > 0) {
                     // Cancela el crédito anterior con el descuento (queda registrado como pago)
@@ -2562,41 +2632,75 @@
         function printContract(id) {
             const c = db.cre.find(x => x.id === id);
             if(!c) return;
+            // Contratos anteriores sin número: se asigna una sola vez (el número escrito o el siguiente correlativo).
+            if(!c.contrato && allowed('createCredit')) {
+                const w = prompt('Este crédito aún no tiene número de contrato.\nEscribe el número que le corresponde (ej. GYC-013) o deja vacío para asignar el siguiente automático.\nCancelar = imprimir sin número.');
+                if(w !== null) {
+                    const got = GycRules.assignContractNumber(db, c, w);
+                    if(got) { log('Asignó el contrato ' + got + ' al crédito ' + id); save(); renderCre(); }
+                    else alert('Ese número ya está en uso por otro contrato.');
+                }
+            }
             const cli = db.cli.find(x => x.id === c.cliId) || {};
             const d = GycRules.contractData(c, cli, { rep: db.cfg.rep ?? 'Gabriel Enrique Aguilar Ortega', cargo: db.cfg.cargo ?? 'Gerente de Créditos' });
             const e = escapeText, empresa = e((db.cfg.name || 'GYC CAPITAL').toUpperCase());
             const refi = d.descuento ? ` Del monto del crédito se descontó el saldo anterior de ${e(d.descuento)}, por lo que el monto neto entregado fue de ${e(d.neto)} (${e(d.netoLetras)}).` : '';
+            const row = (...cells) => `<tr>${cells.join('')}</tr>`;
+            const L = t => `<td class="ct-l">${t}</td>`;
+            const V = (t, cls = '', extra = '') => `<td class="${cls}" ${extra}>${t}</td>`;
+            const sign = (role, l1, v1, l2, v2, cls = '', tail = '') => `<div class="${cls}"><div class="ct-role">${role}</div><div class="ct-line"></div><div class="ct-who">${l1}: ${e(v1)}<br>${l2}: ${e(v2)}${tail}</div></div>`;
+            const fiador = d.fiador ? sign('FIADOR SOLIDARIO / ACEPTACIÓN', 'Nombre', d.fiador.nombre, 'Cédula', d.fiador.cedula, '', '<br><b>FIADOR</b>') : '';
             document.getElementById('print-letter').innerHTML = `
-                <table class="ct">
-                    <tr><td class="ct-h" colspan="4" style="font-size:17px;">${empresa}</td></tr>
-                    <tr><td class="ct-c" colspan="4" style="font-weight:700;">CONTRATO DE CRÉDITO | RECIBO DE DESEMBOLSO | ACEPTACIÓN DE GARANTÍA</td></tr>
-                    <tr><td class="ct-s" colspan="4">A. DATOS DEL CLIENTE</td></tr>
-                    <tr><td class="ct-l">Nombre:</td><td class="ct-c">${e(d.nombre)}</td><td class="ct-l">No. Cliente:</td><td class="ct-c">${e(d.codigo)}</td></tr>
-                    <tr><td class="ct-l">Cédula:</td><td class="ct-c">${e(d.cedula)}</td><td class="ct-l">Fecha Emisión:</td><td class="ct-c">${e(d.emision)}</td></tr>
-                    <tr><td class="ct-s" colspan="4">B. CONDICIONES FINANCIERAS DEL CRÉDITO</td></tr>
-                    <tr><td class="ct-l">Monto Crédito:</td><td class="ct-r">${e(d.capital)}</td><td class="ct-l">Porcentaje Interés</td><td style="text-align:right;">${e(d.interesPct)}</td></tr>
-                    <tr><td class="ct-l">Plazo:</td><td class="ct-c">${e(d.plazo)}</td><td class="ct-l">Frecuencia:</td><td class="ct-c">${e(d.frecuencia)}</td></tr>
-                    <tr><td class="ct-l">Interés Total:</td><td style="text-align:right;">${e(d.interes)}</td><td class="ct-l">Total a Pagar</td><td class="ct-r">${e(d.total)}</td></tr>
-                    <tr><td class="ct-l">No. de Cuotas:</td><td style="text-align:right;">${e(d.cuotas)}</td><td class="ct-l">Valor de Cuota:</td><td class="ct-r">${e(d.cuota)}</td></tr>
-                    <tr><td class="ct-l">1er Pago:</td><td class="ct-c" colspan="3">${e(d.primerPago)}</td></tr>
-                    <tr><td class="ct-l">Monto Letras:</td><td colspan="3" style="font-style:italic;">(${e(d.capitalLetras)})</td></tr>
-                    <tr><td class="ct-l">Total Letras:</td><td colspan="3" style="font-style:italic;">(${e(d.totalLetras)})</td></tr>
-                    <tr><td class="ct-s" colspan="4">C. CONTRATO DE CRÉDITO Y DECLARACIÓN DE OBLIGACIONES</td></tr>
-                    <tr><td class="ct-p" colspan="4">Por el presente documento, el CLIENTE declara haber recibido a su entera satisfacción de ${empresa} el monto indicado en las condiciones financieras de este contrato. El CLIENTE se reconoce deudor e incondicionalmente obligado a pagar a ${empresa} la suma total pactada (Capital más Intereses), mediante el número de cuotas y en las fechas de pago establecidas en el presente instrumento.</td></tr>
-                    <tr><td class="ct-p" colspan="4">Asimismo, el CLIENTE declara que la información proporcionada a ${empresa} es verídica y se compromete a mantenerla actualizada. En caso de incumplimiento o mora en el pago de una o más cuotas en las fechas convenidas, ${empresa} queda facultada legalmente para ejercer las acciones de cobro extrajudicial o judicial correspondientes, pudiendo aplicarse intereses moratorios y cargos por gestión de cobro conforme a lo pactado y en estricto apego a la legislación aplicable en la República de Nicaragua.</td></tr>
-                    <tr><td class="ct-s" colspan="4">D. RECIBO DE DESEMBOLSO</td></tr>
-                    <tr><td class="ct-p" colspan="4">El cliente ${e(d.nombre)} (Cédula No. ${e(d.cedula)}) declara haber recibido a su entera satisfacción de ${empresa} la cantidad de ${e(d.neto)} (${e(d.netoLetras)}), correspondiente al desembolso efectivo del crédito otorgado, quedando plenamente reconocido dicho monto como obligación firme a su cargo bajo las condiciones establecidas en el presente contrato.${refi}</td></tr>
-                    <tr><td class="ct-s" colspan="4">E. GARANTÍA ENTREGADA / ACEPTACIÓN</td></tr>
-                    <tr><td class="ct-l">Tipo Garantía:</td><td class="ct-c">${e(d.garTipo)}</td><td class="ct-l" style="text-align:center;">Valor Estimado:</td><td class="ct-r">${e(d.garValor)}</td></tr>
-                    <tr><td class="ct-l">Descripción:</td><td colspan="3">${e(d.garDesc)}</td></tr>
-                    <tr><td class="ct-p" colspan="4">El CLIENTE declara bajo protesta de decir verdad que los bienes ofrecidos en garantía son de su exclusiva propiedad, se encuentran libres de todo gravamen o embargo y posee plena facultad legal para disponer de ellos. El CLIENTE acepta que la constitución, custodia, ejecución o eventual realización de la garantía se sujetarán de manera estricta a las normativas y leyes vigentes aplicables en la materia.</td></tr>
-                    <tr><td class="ct-s" colspan="4">F. FIRMAS DE CONFORMIDAD Y ACEPTACIÓN</td></tr>
-                </table>
-                <div class="ct-sign">
-                    <div><b>CLIENTE / DEUDOR</b><div class="ct-line"></div>Nombre: ${e(d.nombre)}<br><br>Cédula: ${e(d.cedula)}</div>
-                    <div><b>POR ${empresa}</b><div class="ct-line"></div>Representante: ${e(d.representante)}<br><br>Cargo: ${e(d.cargo)}</div>
+                <div class="ct-doc">
+                    <div class="ct-band">${empresa}</div>
+                    <div class="ct-sub">CONTRATO DE CRÉDITO | RECIBO DE DESEMBOLSO | ACEPTACIÓN DE GARANTÍA</div>
+
+                    <div class="ct-sec"><div class="ct-sec-h">A. DATOS DEL CLIENTE</div>
+                        <table class="ct-tbl">
+                            ${row(L('Nombre:'), V(e(d.nombre)), L('No. Cliente:'), V(e(d.codigo), 'ct-c'))}
+                            ${row(L('Cédula:'), V(e(d.cedula)), L('No. Contrato:'), V(e(d.contrato) || '—', 'ct-c'))}
+                            ${row(L('Fecha Emisión:'), V(e(d.emision), '', 'colspan="3"'))}
+                        </table>
+                    </div>
+
+                    <div class="ct-sec"><div class="ct-sec-h">B. CONDICIONES FINANCIERAS DEL CRÉDITO</div>
+                        <table class="ct-tbl">
+                            ${row(L('Monto Crédito:'), V(e(d.capital), 'ct-mb'), L('Porcentaje Interés:'), V(e(d.interesPct), 'ct-m'))}
+                            ${row(L('Plazo:'), V(e(d.plazo), 'ct-m'), L('Frecuencia:'), V(e(d.frecuencia), 'ct-m'))}
+                            ${row(L('Interés Total:'), V(e(d.interes), 'ct-m'), L('Total a Pagar:'), V(e(d.total), 'ct-mb'))}
+                            ${row(L('No. de Cuotas:'), V(e(d.cuotas), 'ct-m'), L('Valor de Cuota:'), V(e(d.cuota), 'ct-mb'))}
+                            ${row(L('1er Pago:'), V(e(d.primerPago), 'ct-m', 'colspan="3"'))}
+                            ${row(L('Monto Letras:'), V('(' + e(d.capitalLetras) + ')', 'ct-i', 'colspan="3"'))}
+                            ${row(L('Total Letras:'), V('(' + e(d.totalLetras) + ')', 'ct-i', 'colspan="3"'))}
+                        </table>
+                    </div>
+
+                    <div class="ct-sec"><div class="ct-sec-h">C. CONTRATO DE CRÉDITO Y DECLARACIÓN DE OBLIGACIONES</div>
+                        <div class="ct-p">Por el presente documento, el CLIENTE declara haber recibido a su entera satisfacción de ${empresa} el monto indicado en las condiciones financieras de este contrato. El CLIENTE se reconoce deudor e incondicionalmente obligado a pagar a ${empresa} la suma total pactada (Capital más Intereses), mediante el número de cuotas y en las fechas de pago establecidas en el presente instrumento.</div>
+                        <div class="ct-p">Asimismo, el CLIENTE declara que la información proporcionada a ${empresa} es verídica y se compromete a mantenerla actualizada. En caso de incumplimiento o mora en el pago de una o más cuotas en las fechas convenidas, ${empresa} queda facultada legalmente para ejercer las acciones de cobro extrajudicial o judicial correspondientes, pudiendo aplicarse intereses moratorios y cargos por gestión de cobro conforme a lo pactado y en estricto apego a la legislación aplicable en la República de Nicaragua.</div>
+                    </div>
+
+                    <div class="ct-sec"><div class="ct-sec-h">D. RECIBO DE DESEMBOLSO</div>
+                        <div class="ct-p">El cliente ${e(d.nombre)} (Cédula No. ${e(d.cedula)}) declara haber recibido a su entera satisfacción de ${empresa} la cantidad de ${e(d.neto)} (${e(d.netoLetras)}), correspondiente al desembolso efectivo del crédito otorgado, quedando plenamente reconocido dicho monto como obligación firme a su cargo bajo las condiciones establecidas en el presente contrato.${refi}</div>
+                    </div>
+
+                    <div class="ct-sec"><div class="ct-sec-h">E. GARANTÍA ENTREGADA / ACEPTACIÓN</div>
+                        <table class="ct-tbl">
+                            ${row(L('Tipo Garantía:'), V(e(d.garTipo), 'ct-c'), L('Valor Estimado:'), V(e(d.garValor), 'ct-mb'))}
+                            ${row(L('Descripción:'), V(e(d.garDesc), '', 'colspan="3"'))}
+                        </table>
+                        <div class="ct-p" style="border-top:1px solid #d3ddd6;">El CLIENTE declara bajo protesta de decir verdad que los bienes ofrecidos en garantía son de su exclusiva propiedad, se encuentran libres de todo gravamen o embargo y posee plena facultad legal para disponer de ellos. El CLIENTE acepta que la constitución, custodia, ejecución o eventual realización de la garantía se sujetarán de manera estricta a las normativas y leyes vigentes aplicables en la materia.</div>
+                    </div>
+
+                    <div class="ct-sec"><div class="ct-sec-h">F. FIRMAS DE CONFORMIDAD Y ACEPTACIÓN</div>
+                        <div class="ct-sign">
+                            ${sign('CLIENTE / DEUDOR', 'Nombre', d.nombre, 'Cédula', d.cedula)}
+                            ${d.fiador ? fiador : sign('POR ' + empresa, 'Representante', d.representante, 'Cargo', d.cargo)}
+                            ${d.fiador ? sign('POR ' + empresa, 'Representante', d.representante, 'Cargo', d.cargo, 'ct-sign-wide') : ''}
+                        </div>
+                    </div>
+                    <div class="ct-foot">Documento generado por ${empresa} — Copia para el Deudor y Archivo Institucional</div>
                 </div>
-                <p style="text-align:center; font-style:italic; font-size:10px; margin-top:34px; font-family:Arial,Helvetica,sans-serif;">Documento generado por ${empresa} — Copia para el Deudor y Archivo Institucional</p>
             `;
             document.getElementById('btn-print-letter').innerText = 'IMPRIMIR CONTRATO';
             log('Generó contrato del crédito ' + id);

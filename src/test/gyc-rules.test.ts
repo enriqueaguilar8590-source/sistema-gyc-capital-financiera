@@ -130,3 +130,35 @@ describe('contrato de crédito',()=>{
     expect([d.emision,d.primerPago,d.garValor,d.totalLetras]).toEqual(['21/10/2026','28/10/2026','C$10,000.00','OCHO MIL SETECIENTOS SESENTA CÓRDOBAS']);
   });
 });
+describe('numeración de contratos y fiador',()=>{
+  const mk=()=>({cfg:{secuencias:{}},cre:[{id:'A'},{id:'B'}],trash:[] as any[]});
+  it('respeta un número existente y continúa después del mayor usado',()=>{
+    const db=mk(); expect(rules.nextContractNumber(db).id).toBe('GYC-001');
+    expect(rules.assignContractNumber(db,db.cre[0],'gyc-013')).toBe('GYC-013');
+    expect(rules.nextContractNumber(db).id).toBe('GYC-014');
+    expect(rules.assignContractNumber(db,db.cre[1],'GYC-013')).toBe('');
+    expect(rules.assignContractNumber(db,db.cre[1])).toBe('GYC-014');
+  });
+  it('reimprimir no consume números y los eliminados no se reutilizan',()=>{
+    const db=mk(); rules.assignContractNumber(db,db.cre[0]);
+    expect(rules.assignContractNumber(db,db.cre[0])).toBe('GYC-001');
+    expect(rules.nextContractNumber(db).id).toBe('GYC-002');
+    db.trash.push({type:'cre',data:db.cre.pop()}); db.trash=[];
+    expect(rules.nextContractNumber(db).id).toBe('GYC-002');
+  });
+  it('no supone que el último sea el más reciente que conoce',()=>{
+    const db:any={cfg:{secuencias:{conNext:3}},cre:[{id:'X',contrato:'GYC-020'}],trash:[]};
+    expect(rules.nextContractNumber(db).id).toBe('GYC-021');
+  });
+  it('valida el fiador solo cuando está activado',()=>{
+    expect(rules.validFiador({activo:false},'1')).toBe('');
+    expect(rules.validFiador({activo:true,nom:'',ced:'2'},'1')).not.toBe('');
+    expect(rules.validFiador({activo:true,nom:'A',ced:'081-1'},'0811')).not.toBe('');
+    expect(rules.validFiador({activo:true,nom:'A',ced:'2'},'1')).toBe('');
+  });
+  it('contratos antiguos y fiador desactivado no muestran fiador',()=>{
+    expect(rules.contractData({id:'C',schedule:[]},{},{}).fiador).toBeNull();
+    expect(rules.contractData({id:'C',schedule:[],fiador:{activo:false,nom:'P',ced:'1'}},{},{}).fiador).toBeNull();
+    expect(rules.contractData({id:'C',schedule:[],fiador:{activo:true,nom:'P',ced:'1'}},{},{}).fiador).toEqual({nombre:'P',cedula:'1'});
+  });
+});
