@@ -569,14 +569,14 @@
         }
 
         /* Contrato de crédito (se imprime en #print-letter, igual que el plan de pago) */
-        @page contrato { size: letter; margin: 14mm 15mm; }
-        #print-letter .ct-doc { page: contrato; font-family: Arial, Helvetica, sans-serif; color: #1f2933; font-size: 10.5pt; line-height: 1.45; text-align: left; }
-        #print-letter .ct-band { background: #1e5b38 !important; color: #fff !important; text-align: center; padding: 14px 10px; font-size: 22pt; font-weight: 700; letter-spacing: .18em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        #print-letter .ct-sub { text-align: center; font-size: 9.5pt; font-weight: 700; letter-spacing: .06em; color: #1e5b38; padding: 10px 6px 16px; }
-        #print-letter .ct-sec { border: 1px solid #7a9a86; margin: 0 0 12px; break-inside: avoid; page-break-inside: avoid; }
-        #print-letter .ct-sec-h { background: #e2ece5 !important; color: #1e5b38 !important; font-weight: 700; text-align: center; letter-spacing: .05em; padding: 7px 8px; font-size: 10.5pt; border-bottom: 1px solid #7a9a86; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page contrato { size: letter; margin: 8mm 13mm; }
+        #print-letter .ct-doc { page: contrato; font-family: Arial, Helvetica, sans-serif; color: #1f2933; font-size: 9pt; line-height: 1.35; text-align: left; }
+        #print-letter .ct-band { background: #1e5b38 !important; color: #fff !important; text-align: center; padding: 7px 10px; font-size: 17pt; font-weight: 700; letter-spacing: .18em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        #print-letter .ct-sub { text-align: center; font-size: 8.5pt; font-weight: 700; letter-spacing: .05em; color: #1e5b38; padding: 4px 6px 7px; }
+        #print-letter .ct-sec { border: 1px solid #7a9a86; margin: 0 0 5px; break-inside: avoid; page-break-inside: avoid; }
+        #print-letter .ct-sec-h { background: #e2ece5 !important; color: #1e5b38 !important; font-weight: 700; text-align: center; letter-spacing: .05em; padding: 3px 8px; font-size: 9pt; border-bottom: 1px solid #7a9a86; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         #print-letter .ct-doc .ct-tbl { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; }
-        #print-letter .ct-doc .ct-tbl td { border: 1px solid #d3ddd6 !important; padding: 7px 10px !important; color: #1f2933 !important; font-size: 10.5pt; vertical-align: middle; overflow-wrap: anywhere; background: #fff; }
+        #print-letter .ct-doc .ct-tbl td { border: 1px solid #d3ddd6 !important; padding: 2px 9px !important; color: #1f2933 !important; font-size: 9pt; vertical-align: middle; overflow-wrap: anywhere; background: #fff; }
         #print-letter .ct-doc .ct-tbl tr:first-child td { border-top: 0 !important; }
         #print-letter .ct-doc .ct-tbl tr:last-child td { border-bottom: 0 !important; }
         #print-letter .ct-doc .ct-tbl td:first-child { border-left: 0 !important; }
@@ -586,15 +586,17 @@
         #print-letter .ct-doc .ct-tbl td.ct-mb { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: #1e5b38 !important; }
         #print-letter .ct-doc .ct-tbl td.ct-c { text-align: center; }
         #print-letter .ct-doc .ct-tbl td.ct-i { font-style: italic; }
-        #print-letter .ct-p { padding: 11px 16px; text-align: justify; line-height: 1.55; font-size: 10.5pt; }
+        #print-letter .ct-p { padding: 4px 12px; text-align: justify; line-height: 1.4; font-size: 9pt; }
         #print-letter .ct-p + .ct-p { border-top: 1px solid #d3ddd6; }
-        #print-letter .ct-sign { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 26px; padding: 22px 28px 20px; text-align: center; font-size: 10.5pt; }
+        #print-letter .ct-sign { display: grid; grid-template-columns: 1fr 1fr; column-gap: 36px; row-gap: 2px; padding: 4px 26px 6px; text-align: center; font-size: 9pt; }
+        #print-letter .ct-sign.ct-sign3 { grid-template-columns: repeat(3, 1fr); column-gap: 16px; padding: 4px 14px 6px; }
         #print-letter .ct-sign > div { break-inside: avoid; page-break-inside: avoid; }
-        #print-letter .ct-sign > div.ct-sign-wide { grid-column: 1 / -1; justify-self: center; width: calc(50% - 20px); }
-        #print-letter .ct-sign .ct-role { font-weight: 700; color: #1e5b38; letter-spacing: .04em; font-size: 10pt; }
-        #print-letter .ct-sign .ct-line { border-top: 1px solid #1f2933; margin: 54px 4px 8px; }
-        #print-letter .ct-sign .ct-who { line-height: 1.7; }
-        #print-letter .ct-foot { text-align: center; font-style: italic; font-size: 8.5pt; color: #52606d; margin-top: 8px; padding-bottom: 2px; break-inside: avoid; }
+        #print-letter .ct-sign > div.ct-sign-wide { grid-column: 1 / -1; justify-self: center; width: calc(50% - 18px); }
+        #print-letter .ct-sign .ct-role { font-weight: 700; color: #1e5b38; letter-spacing: .04em; font-size: 9pt; }
+        #print-letter .ct-sign .ct-line { border-top: 1px solid #1f2933; margin: 30px 4px 4px; }
+        #print-letter .ct-sign:not(.ct-sign3) .ct-line { margin-top: 52px; }
+        #print-letter .ct-sign .ct-who { line-height: 1.4; }
+        #print-letter .ct-foot { text-align: center; font-style: italic; font-size: 7.5pt; color: #52606d; margin-top: 2px; break-inside: avoid; }
         .badge-test { background: #6366f1; color: white; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: bold; }
         .tab-group { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .tab-group::-webkit-scrollbar { display: none; }
@@ -2693,10 +2695,11 @@
                     </div>
 
                     <div class="ct-sec"><div class="ct-sec-h">F. FIRMAS DE CONFORMIDAD Y ACEPTACIÓN</div>
-                        <div class="ct-sign">
+                        <div class="ct-sign${d.fiador ? ' ct-sign3' : ''}">
                             ${sign('CLIENTE / DEUDOR', 'Nombre', d.nombre, 'Cédula', d.cedula)}
-                            ${d.fiador ? fiador : sign('POR ' + empresa, 'Representante', d.representante, 'Cargo', d.cargo)}
-                            ${d.fiador ? sign('POR ' + empresa, 'Representante', d.representante, 'Cargo', d.cargo, 'ct-sign-wide') : ''}
+                            ${fiador}
+                            ${sign('POR ' + empresa, 'Representante', d.representante, 'Cargo', d.cargo)}
+                            
                         </div>
                     </div>
                     <div class="ct-foot">Documento generado por ${empresa} — Copia para el Deudor y Archivo Institucional</div>
