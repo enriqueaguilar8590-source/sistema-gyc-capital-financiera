@@ -120,7 +120,7 @@
     const validRate = tc => Number.isFinite(Number(tc)) && Number(tc) >= 1 && Number(tc) <= 1000;
     const toUsd = (cordobas, tc) => validRate(tc) ? round2(Number(cordobas) / Number(tc)) : 0;
     // Smallest US$ amount (to the cent) that covers a córdoba amount; used to suggest what the client hands over.
-    const toUsdCeil = (cordobas, tc) => validRate(tc) ? Math.ceil(Math.round(Number(cordobas) / Number(tc) * 10000) / 100 - 1e-9) / 100 : 0;
+    const toUsdCeil = (cordobas, tc) => validRate(tc) ? (Math.ceil(Math.round(Number(cordobas) / Number(tc) * 10000) / 100 - 1e-9) / 100 || 0) : 0;
     // The ledger stays in córdobas: a US$ payment is converted and the dollars + rate are kept on the receipt.
     // If rounding to the cent pushes it over the maximum payable by less than one US cent, it is trimmed to the maximum.
     function convertUsdPayment(usd, tc, maxCordobas) {

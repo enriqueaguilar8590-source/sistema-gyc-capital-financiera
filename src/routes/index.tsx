@@ -4,6 +4,8 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { merge3 } from "@/lib/merge";
+import { mayRestorePending, requireSaveResult, type SyncCheckpoint } from "@/lib/workspace-sync";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,6 +23,7 @@ export const Route = createFileRoute("/")({
 
 type Obj = Record<string, unknown>;
 const KEY = "gyc_v10";
+const CHECKPOINT_KEY = "gyc_sync_checkpoint";
 const readLocal = (): Obj | null => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || "null");
@@ -60,22 +63,25 @@ function Index() {
         </Card>
       </Center>
     );
-  return <Sistema role={role} />;
+  return <Sistema role={role} userId={session.user.id} />;
 }
 
-function Sistema({ role }: { role: string }) {
+function Sistema({ role, userId }: { role: string; userId: string }) {
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState("Sincronizado");
   const [team, setTeam] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const base = useRef<Obj | null>(null);
   const version = useRef(0);
-  const busy = useRef(false);
+  const inFlight = useRef<Promise<boolean> | null>(null);
+  const initialized = useRef(false);
 
-  const sync = useCallback(async () => {
-    if (busy.current) return;
-    busy.current = true;
+  const sync = useCallback((): Promise<boolean> => {
+    if (!initialized.current) return Promise.resolve(false);
+    if (inFlight.current) return inFlight.current;
+    const run = async () => {
     try {
+      for (let attempt = 0; attempt < 3; attempt++) {
       const local = readLocal();
       const { data: ws, error } = await supabase.from("workspace").select("data, version").eq("id", 1).single();
       if (error) throw error;
@@ -90,26 +96,43 @@ function Sistema({ role }: { role: string }) {
       }
       if (merged && JSON.stringify(merged) !== JSON.stringify(remote)) {
         setStatus("Guardando…");
-        const { data: v } = await supabase.rpc("save_workspace", { new_data: merged as never, expected_version: ws.version });
-        if (v == null) { busy.current = false; return sync(); } // otro dispositivo guardó primero
-        version.current = v as number;
+        const { data: v, error: saveError } = await supabase.rpc("save_workspace", { new_data: merged as never, expected_version: ws.version });
+        const saved = requireSaveResult(saveError, v);
+        if (saved == null) continue;
+        version.current = saved;
       } else version.current = ws.version;
       base.current = merged;
+      localStorage.setItem(CHECKPOINT_KEY, JSON.stringify({ userId, base: merged }));
       setStatus("Sincronizado");
-    } catch {
-      setStatus("Sin conexión — se guardará al volver");
-    } finally {
-      busy.current = false;
+      return true;
+      }
+      setStatus("Cambios pendientes — vuelve a intentar");
+      return false;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      setStatus(/permission|protected|cannot|invalid|balance|installment/i.test(message) ? "No se pudo guardar: revisa tus permisos o los cambios" : "Sin conexión — cambios conservados en este dispositivo");
+      return false;
     }
-  }, []);
+    };
+    const promise = run().finally(() => { inFlight.current = null; });
+    inFlight.current = promise;
+    return promise;
+  }, [userId]);
 
   useEffect(() => {
     (async () => {
-      const { data: ws } = await supabase.from("workspace").select("data, version").eq("id", 1).single();
-      if (ws?.data) localStorage.setItem(KEY, JSON.stringify(ws.data));
+      let checkpoint: SyncCheckpoint | null = null;
+      try { checkpoint = JSON.parse(localStorage.getItem(CHECKPOINT_KEY) || 'null'); } catch { /* ignore invalid checkpoint */ }
+      const { data: ws, error } = await supabase.from("workspace").select("data, version").eq("id", 1).single();
+      if (error) { setStatus("No se pudieron descargar los datos. Vuelve a intentar."); return; }
+      const remote = (ws?.data as Obj) ?? null;
+      const merged = mayRestorePending(checkpoint, userId) ? merge3(checkpoint?.base ?? null, readLocal(), remote) : remote;
+      if (merged) localStorage.setItem(KEY, JSON.stringify(merged));
       else localStorage.removeItem(KEY);
-      base.current = (ws?.data as Obj) ?? null;
-      version.current = ws?.version ?? 0;
+      base.current = remote;
+      localStorage.setItem(CHECKPOINT_KEY, JSON.stringify({ userId, base: remote }));
+      version.current = ws.version;
+      initialized.current = true;
       setReady(true);
     })();
     const onMsg = (e: MessageEvent) => e.data === "gyc-save" && setTimeout(sync, 300);
@@ -119,19 +142,19 @@ function Sistema({ role }: { role: string }) {
       clearInterval(iv);
       window.removeEventListener("message", onMsg);
     };
-  }, [sync]);
+  }, [sync, userId]);
 
-  if (!ready) return <Center><Logo /><p>Descargando datos de la nube…</p></Center>;
+  if (!ready) return <Center><Logo /><p>{status === 'Sincronizado' ? 'Descargando datos de la nube…' : status}</p>{status !== 'Sincronizado' && <Button onClick={() => location.reload()}>Reintentar</Button>}</Center>;
   return (
     <div className="flex h-dvh flex-col bg-background">
       <iframe ref={frame} src={`/sistema.html?role=${encodeURIComponent(role)}`} title="GYC Capital" className="w-full flex-1 border-0" />
       <div className="flex items-center justify-between gap-3 border-t border-border bg-brand-deep px-3 py-1.5 text-xs text-brand-deep-foreground">
         <span>☁ {status}</span>
         <div className="flex gap-4">
-          {role === "owner" && <button className="font-semibold text-gold" onClick={() => setTeam(true)}>Equipo</button>}
-          <button className="font-semibold" onClick={async () => { await sync(); localStorage.removeItem(KEY); await supabase.auth.signOut(); }}>
+          {(role === "owner" || role === "admin") && <Button variant="ghost" size="sm" className="font-semibold text-gold" onClick={() => setTeam(true)}>Equipo</Button>}
+          <Button variant="ghost" size="sm" className="font-semibold" onClick={async () => { if (!await sync() || !await sync()) { alert('Tus cambios todavía no están guardados. Reintenta antes de cerrar sesión.'); return; } localStorage.removeItem(KEY); localStorage.removeItem(CHECKPOINT_KEY); await supabase.auth.signOut(); }}>
             Cerrar sesión
-          </button>
+          </Button>
         </div>
       </div>
       {team && <Team onClose={() => setTeam(false)} />}
@@ -142,12 +165,14 @@ function Sistema({ role }: { role: string }) {
 function Team({ onClose }: { onClose: () => void }) {
   const [list, setList] = useState<{ email: string; role: string }[]>([]);
   const [email, setEmail] = useState("");
+  const [newRole, setNewRole] = useState("cobrador");
+  const roleNames: Record<string, string> = { owner: 'Dueño', admin: 'Administrador', desembolsador: 'Desembolsador', cobrador: 'Cobrador', asistente: 'Asistente' };
   const [msg, setMsg] = useState("");
   const load = () => supabase.from("team_members").select("email, role").order("added_at").then(({ data }) => setList(data ?? []));
   useEffect(() => { load(); }, []);
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("team_members").insert({ email: email.trim().toLowerCase(), role: "cobrador" });
+    const { error } = await supabase.from("team_members").insert({ email: email.trim().toLowerCase(), role: newRole });
     setMsg(error ? "No se pudo agregar (¿ya existe?)" : "Agregado. Ya puede crear su cuenta con ese correo.");
     if (!error) { setEmail(""); load(); }
   };
@@ -155,21 +180,21 @@ function Team({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay p-3 sm:items-center">
       <div className="w-full max-w-md space-y-3 rounded-2xl bg-card p-5 text-card-foreground shadow-brand">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Equipo de cobradores</h2>
-          <button onClick={onClose} className="text-2xl leading-none text-muted-foreground">×</button>
+          <h2 className="text-lg font-bold">Equipo</h2>
+          <Button variant="ghost" size="icon" aria-label="Cerrar Equipo" onClick={onClose} className="text-2xl leading-none text-muted-foreground">×</Button>
         </div>
-        <p className="text-xs text-muted-foreground">Agrega el correo de cada cobrador. Al entrar con ese correo verá la misma cartera. Dentro del sistema sigue usando su usuario y clave de cobrador.</p>
-        <form onSubmit={add} className="flex gap-2">
+        <form onSubmit={add} className="flex flex-wrap gap-2">
           <input className="field flex-1" type="email" required placeholder="correo@cobrador.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button className="btn-brand w-auto px-4">Agregar</button>
+          <select className="field" aria-label="Permiso del nuevo miembro" value={newRole} onChange={e => setNewRole(e.target.value)}>{Object.entries(roleNames).filter(([r]) => r !== 'owner').map(([r,label]) => <option key={r} value={r}>{label}</option>)}</select>
+          <Button type="submit">Agregar</Button>
         </form>
         {msg && <p className="text-xs text-primary">{msg}</p>}
         <ul className="divide-y divide-border">
           {list.map((m) => (
             <li key={m.email} className="flex items-center justify-between py-2 text-sm">
-              <span className="truncate">{m.email} <span className="text-xs text-muted-foreground">({m.role === "owner" ? "dueño" : "cobrador"})</span></span>
+              <span className="min-w-0 break-all">{m.email} {m.role === 'owner' && <span className="text-xs text-muted-foreground">(Dueño)</span>}</span>
               {m.role !== "owner" && (
-                <button className="text-xs font-semibold text-destructive" onClick={async () => { await supabase.from("team_members").delete().eq("email", m.email); load(); }}>Quitar</button>
+                <div className="flex shrink-0 flex-col gap-1"><select className="field" aria-label={`Permiso de ${m.email}`} value={m.role} onChange={async e => { const {error} = await supabase.from('team_members').update({role:e.target.value}).eq('email',m.email); setMsg(error ? 'No se pudo cambiar el permiso.' : 'Permiso actualizado. Se aplicará al volver a entrar.'); load(); }}>{Object.entries(roleNames).filter(([r]) => r !== 'owner').map(([r,label]) => <option key={r} value={r}>{label}</option>)}</select><Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if(!confirm('¿Quitar el acceso de este miembro? Su historial se conservará.')) return; const {error} = await supabase.from("team_members").delete().eq("email", m.email); if(error) setMsg('No se pudo quitar el acceso.'); load(); }}>Quitar</Button></div>
               )}
             </li>
           ))}
