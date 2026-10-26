@@ -1,4 +1,5 @@
 # Cambios solicitados
+- [ ] Revisar el trabajo pendiente de Clau y terminar errores y comprobaciones.
 - [ ] Buscadores independientes en clientes, créditos y mora, con acceso rápido al pago.
 - [x] Socios con registro e historial de aportes de capital, dashboard, y edición de montos protegida con usuario y contraseña propios.
 - [ ] Verificar búsquedas, pagos y registro de aportes.
