@@ -2369,7 +2369,7 @@
 
                 item.moraPaidInCycle = (Number(item.moraPaidInCycle) || 0) + aplicadaAlItem + dispensaAlItem;
                 item.moraPaidTotal = (Number(item.moraPaidTotal) || 0) + aplicadaAlItem;
-                item.moraWaivedTotal = (Number(item.moraWaivedTotal) || 0) + dispensaAlItem;
+                if(dispensaAlItem > 0) item.moraWaivedTotal = (Number(item.moraWaivedTotal) || 0) + dispensaAlItem;
                 item.moraLastPaymentDate = todayKey;
                 waiveLeft -= dispensaAlItem;
                 remaining -= aplicadaAlItem;

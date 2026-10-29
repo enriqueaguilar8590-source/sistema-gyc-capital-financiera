@@ -314,11 +314,11 @@
     const sign = (db, code) => (acct(db, code) || {}).naturaleza === 'acreedora' ? -1 : 1;
     function balanceOf(db, code, to, from) {
         let c = 0; posted(db).forEach(a => { if((!to || a.fecha <= to) && (!from || a.fecha >= from)) a.lineas.forEach(l => { if(l.cuenta === code) c += cents(l.debe) - cents(l.haber); }); });
-        return c * sign(db, code) / 100;
+        return c === 0 ? 0 : c * sign(db, code) / 100;
     }
     function balanceByRef(db, code, ref, to) {
         let c = 0; posted(db).forEach(a => { if(!to || a.fecha <= to) a.lineas.forEach(l => { if(l.cuenta === code && l.ref === ref) c += cents(l.debe) - cents(l.haber); }); });
-        return c * sign(db, code) / 100;
+        return c === 0 ? 0 : c * sign(db, code) / 100;
     }
     function mayor(db, code, from, to) {
         const open = cents(balanceOf(db, code, addDay(from, -1))), s = sign(db, code); let run = open, deb = 0, cre = 0;

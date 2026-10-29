@@ -1,9 +1,11 @@
 # Cambios solicitados
-- [ ] Revisar el trabajo pendiente de Clau y terminar errores y comprobaciones.
-- [ ] Buscadores independientes en clientes, créditos y mora, con acceso rápido al pago.
+- [x] Revisar errores pendientes: cuatro fallos contables corregidos, protección del diario aplicada y cobros sin cambios no autorizados en mora.
+- [x] Buscadores independientes en clientes, créditos y mora, con acceso rápido al pago.
 - [x] Socios con registro e historial de aportes de capital, dashboard, y edición de montos protegida con usuario y contraseña propios.
-- [ ] Verificar búsquedas, pagos y registro de aportes.
-- [ ] Permisos de administrador, desembolsador, cobrador y asistente, protegidos en la nube.
-- [ ] Eliminar usuarios inhabilitados conservando cobros e historial.
-- [ ] Arqueo de recuperado por día, semana, mes y rango, por cobrador.
-- [ ] Pruebas de reglas y comprobación de funcionamiento.
+- [x] Verificar búsquedas, apertura del pago y guardado de aportes con prueba revertida.
+- [x] Permisos de administrador, desembolsador, cobrador y asistente, protegidos en la nube.
+- [x] Eliminar usuarios inhabilitados conservando cobros e historial (reglas y comprobación previa).
+- [x] Arqueo de recuperado por día, semana, mes y rango, por cobrador.
+- [x] Pruebas: 111 correctas; protección contable y aporte comprobados en nube sin conservar datos de prueba.
+- [ ] Aprobar apertura contable y política de intereses: requiere saldos reales conciliados y validación del contador.
+- [ ] Verificar cobros simultáneos reales en dos dispositivos: requiere operaciones reales autorizadas, no cobros ficticios sobre la cartera.

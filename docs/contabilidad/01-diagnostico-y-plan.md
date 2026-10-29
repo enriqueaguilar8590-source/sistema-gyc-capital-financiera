@@ -2,6 +2,16 @@
 
 Fecha: 26/10/2026. Inicio contable previsto: 01/11/2026. Apertura: 31/10/2026.
 
+## Actualización verificada al 29/10/2026
+
+- La pantalla activa usa `gyc-contab.js` y `gyc-contab-ui.js`, con datos en `db.pd`; el motor `gyc-ledger.js` permanece separado como referencia.
+- El disparador `guard_accounting_workspace` ya protege ambos formatos en la nube: asientos y auditoría inmutables, apertura aprobada inmutable, números y operaciones únicos, partida doble y períodos cerrados. Se probaron aceptación y rechazos sin conservar movimientos ficticios.
+- Las 111 pruebas locales pasan. Los casos contables de nube también se ejecutaron mediante la conexión privilegiada de herramientas; su archivo Vitest requiere `GYC_PRIVILEGED_DB_TESTS` y conexión privilegiada para repetirse.
+- Socios, arqueo, búsqueda por nombre y apertura del pago comprobados con la cuenta real; aporte guardado y revertido en una transacción de prueba.
+- La apertura aún no está aprobada y la política sigue pendiente de validación del contador. No se inventaron saldos ni se activó la contabilización con datos incompletos.
+
+El diagnóstico siguiente describe la etapa original y no reemplaza esta actualización.
+
 ## 1. Cómo está hecho el sistema hoy (verificado en el código)
 
 - Una sola aplicación: `public/sistema.html` (lógica y pantallas) + `public/gyc-rules.js` (reglas puras, con pruebas).
