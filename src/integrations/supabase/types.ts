@@ -82,6 +82,16 @@ export type Database = {
         Args: { expected_version: number; new_data: Json }
         Returns: number
       }
+      validate_accounting_change: {
+        Args: {
+          audit_key: string
+          candidate: Json
+          number_key: string
+          origin_key: string
+          previous: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
