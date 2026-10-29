@@ -294,6 +294,26 @@
         for(let i = count-1; i >= 0; i--) { const m = addMonths(endMonth, -i), r = accountingReport(db, m+'-01', m+'-31'); out.push({month:m, income:r.income, expenses:r.expenses, profit:r.profit}); }
         return out;
     }
+    // Intereses proyectados por mes: la parte de interés de cada cuota que vence en el mes (cuota x interés/total del crédito).
+    // Solo créditos reales con saldo pendiente; la mora no se proyecta. `collected` es el interés realmente cobrado en el mes.
+    function projectedInterest(db, startMonth, count) {
+        const credits = (db.cre || []).filter(c => !c.esPrueba && Number(c.saldo) > 0.005 && Number(c.total) > 0);
+        const out = [];
+        for(let i = 0; i < count; i++) {
+            const month = addMonths(startMonth, i);
+            let scheduled = 0, pending = 0, installments = 0;
+            credits.forEach(c => {
+                const ratio = Math.max(0, (Number(c.total) - Number(c.cap)) / Number(c.total));
+                (c.schedule || []).forEach(it => {
+                    if(dateKey(it.date).slice(0,7) !== month) return;
+                    const amount = Number(it.amount) || 0, open = Math.max(0, amount - (Number(it.paid) || 0));
+                    scheduled += amount * ratio; pending += open * ratio; installments++;
+                });
+            });
+            out.push({month, scheduled: round2(scheduled), pending: round2(pending), collected: accountingReport(db, month+'-01', month+'-31').interest, installments});
+        }
+        return out;
+    }
     // Balance as of today. Cash is estimated from recorded flows; portfolio is outstanding capital.
     function balanceSheet(db, today) {
         const entries = activeEntries(db).filter(e => e.fecha <= today);
@@ -408,5 +428,5 @@
         return id;
     }
     const contractTaken = (db, num, exceptId) => allCredits(db).some(c => c.id !== exceptId && c.contrato && String(c.contrato).toUpperCase() === String(num).toUpperCase());
-    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,projectedInterest,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

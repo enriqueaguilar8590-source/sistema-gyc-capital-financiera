@@ -944,6 +944,16 @@
                     </div>
                 </div>
 
+                <h4 class="dash-section">Utilidad proyectada por mes</h4>
+                <div id="conta-proj" class="card">
+                    <div class="grid-2">
+                        <div><label for="conta-meta">Meta mensual de utilidad (C$)</label><input id="conta-meta" type="number" min="0" step="0.01" placeholder="Ej.: 50000" onchange="saveContaMeta()"></div>
+                        <div id="conta-proj-kpi" style="display:flex; align-items:flex-end;"></div>
+                    </div>
+                    <div class="table-wrapper"><table><thead><tr><th>Mes</th><th style="text-align:right">Interés proyectado</th><th style="text-align:right">Ya cobrado</th><th style="text-align:right">Por cobrar</th><th style="text-align:right">Meta</th></tr></thead><tbody id="conta-proj-list"></tbody></table></div>
+                    <small class="kpi-sub">Interés proyectado = parte de interés de las cuotas que vencen en cada mes, de los créditos con saldo pendiente. No incluye mora, otros ingresos ni gastos, y no cuenta créditos nuevos que aún no existen. “Ya cobrado” es el interés realmente recibido en el mes.</small>
+                </div>
+
                 <h4 class="dash-section">Balance a hoy</h4>
                 <div id="conta-balance" class="card"></div>
 
@@ -3215,8 +3225,28 @@
                 const style = e.anulado ? 'text-decoration:line-through; opacity:.55;' : '';
                 return `<tr style="${style}"><td>${escapeText(e.fecha)}</td><td>${label}</td><td>${escapeText(e.concepto)}${(e.ediciones || []).length ? `<br><small class="kpi-sub" style="text-decoration:none" title="${escapeText(contaTrail(e))}">✏️ Corregido ${e.ediciones.length} ${e.ediciones.length === 1 ? 'vez' : 'veces'} · ${escapeText(e.ediciones[e.ediciones.length - 1].motivo)}</small>` : ''}${e.anulado ? `<br><small>Anulado: ${escapeText(e.motivoAnulacion || '')}</small>` : ''}</td><td style="text-align:right; color:${sign[e.tipo] > 0 ? 'var(--primary)' : 'var(--danger)'}">${sign[e.tipo] > 0 ? '+' : '−'}${agendaFmt(e.monto)}</td><td>${escapeText(e.usuario || '')}</td><td>${e.anulado ? '' : `<div style="display:flex; gap:6px;"><button type="button" class="btn btn-sm btn-sec" onclick="editAccountingEntry('${escapeText(e.id)}')">✏️ EDITAR</button><button type="button" class="btn btn-sm btn-danger" onclick="voidAccountingEntry('${escapeText(e.id)}')">ANULAR</button></div>`}</td></tr>`;
             }).join('') || '<tr><td colspan="6">Sin movimientos en este período.</td></tr>';
+            renderContaProjection();
             renderContaCharts(r);
             applyPermissions();
+        }
+        function saveContaMeta() {
+            if(!requireAction('accounting')) return;
+            const v = Math.round((Number(document.getElementById('conta-meta').value) || 0) * 100) / 100;
+            db.cfg = db.cfg || {}; db.cfg.metaUtilidad = v > 0 ? v : 0;
+            log('Contabilidad: meta mensual de utilidad ' + agendaFmt(db.cfg.metaUtilidad));
+            save(); renderContaProjection();
+        }
+        function renderContaProjection() {
+            const metaEl = document.getElementById('conta-meta'), meta = Number((db.cfg || {}).metaUtilidad) || 0;
+            if(document.activeElement !== metaEl) metaEl.value = meta > 0 ? meta : '';
+            const names = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+            const rows = GycRules.projectedInterest(db, toDateKey(getTodayCalendar()).slice(0, 7), 12);
+            const cur = rows[0], pct = meta > 0 ? Math.round(cur.scheduled / meta * 100) : null;
+            document.getElementById('conta-proj-kpi').innerHTML = `<div><small class="kpi-sub">Este mes: <b>${agendaFmt(cur.scheduled)}</b> proyectado${pct != null ? ` · ${pct}% de la meta` + (cur.scheduled < meta ? ` · faltan ${agendaFmt(meta - cur.scheduled)}` : ' · meta cubierta') : ''}</small></div>`;
+            document.getElementById('conta-proj-list').innerHTML = rows.map(x => {
+                const ok = meta > 0 ? x.scheduled >= meta : null;
+                return `<tr><td>${names[Number(x.month.slice(5, 7)) - 1]} ${x.month.slice(0, 4)}</td><td style="text-align:right"><b>${agendaFmt(x.scheduled)}</b><br><small class="kpi-sub">${x.installments} ${x.installments === 1 ? 'cuota' : 'cuotas'}</small></td><td style="text-align:right">${agendaFmt(x.collected)}</td><td style="text-align:right">${agendaFmt(x.pending)}</td><td style="text-align:right;color:${ok == null ? 'var(--text-muted)' : ok ? 'var(--primary)' : 'var(--danger)'}">${meta > 0 ? (ok ? '✔ cubierta' : 'faltan ' + agendaFmt(meta - x.scheduled)) : '—'}</td></tr>`;
+            }).join('');
         }
         function renderContaCharts(r) {
             if(typeof Chart === 'undefined' || document.getElementById('sect-conta').classList.contains('hidden')) return;
