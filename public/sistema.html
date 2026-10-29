@@ -924,7 +924,9 @@
                     <div class="tab-item" onclick="setContaPeriod('anio', this)">AÑO</div>
                     <div class="tab-item" onclick="setContaPeriod('semana', this)">SEMANA</div>
                     <div class="tab-item" onclick="contaCustomRange()">RANGO</div>
+                    <div class="tab-item" onclick="setContaProjection(this)">PROYECCIÓN</div>
                 </div>
+                <div id="conta-period-view">
                 <div class="cash-filters">
                     <div><label>Desde</label><input id="conta-from" type="date" onchange="contaCustomRange()"></div>
                     <div><label>Hasta</label><input id="conta-to" type="date" onchange="contaCustomRange()"></div>
@@ -942,16 +944,6 @@
                         <div class="chart-container" id="conta-cat-wrap"><canvas id="chart-conta-cat"></canvas></div>
                         <div id="conta-cat-empty" class="hidden" style="padding:60px 10px;text-align:center;color:var(--text-muted);font-size:13px;">Sin gastos en este período.</div>
                     </div>
-                </div>
-
-                <h4 class="dash-section">Utilidad proyectada por mes</h4>
-                <div id="conta-proj" class="card">
-                    <div class="grid-2">
-                        <div><label for="conta-meta">Meta mensual de utilidad (C$)</label><input id="conta-meta" type="number" min="0" step="0.01" placeholder="Ej.: 50000" onchange="saveContaMeta()"></div>
-                        <div id="conta-proj-kpi" style="display:flex; align-items:flex-end;"></div>
-                    </div>
-                    <div class="table-wrapper"><table><thead><tr><th>Mes</th><th style="text-align:right">Interés proyectado</th><th style="text-align:right">Ya cobrado</th><th style="text-align:right">Por cobrar</th><th style="text-align:right">Meta</th></tr></thead><tbody id="conta-proj-list"></tbody></table></div>
-                    <small class="kpi-sub">Interés proyectado = parte de interés de las cuotas que vencen en cada mes, de los créditos con saldo pendiente. No incluye mora, otros ingresos ni gastos, y no cuenta créditos nuevos que aún no existen. “Ya cobrado” es el interés realmente recibido en el mes.</small>
                 </div>
 
                 <h4 class="dash-section">Balance a hoy</h4>
@@ -976,6 +968,25 @@
                 <h3 class="cash-section">Movimientos del período</h3>
                 <label for="conta-filter">Tipo</label><select id="conta-filter" onchange="renderConta()"><option value="">Todos</option></select>
                 <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Registrado por</th><th></th></tr></thead><tbody id="conta-list"></tbody></table></div>
+                </div>
+
+                <div id="conta-proj-view" class="hidden">
+                    <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px;">Utilidad proyectada = interés de las cuotas que vencen en cada mes, de los créditos que ya tienes con saldo pendiente. Sirve para marcar metas: no incluye mora, otros ingresos ni gastos, ni créditos nuevos que aún no desembolsas.</p>
+                    <div class="grid-2">
+                        <div><label for="conta-meta">Meta mensual de utilidad (C$)</label><input id="conta-meta" type="number" min="0" step="0.01" placeholder="Ej.: 50000" onchange="saveContaMeta()"></div>
+                        <div><label for="conta-horizon">Meses a proyectar</label><select id="conta-horizon" onchange="renderContaProjection()"><option value="3">3 meses</option><option value="6" selected>6 meses</option><option value="12">12 meses</option><option value="24">24 meses</option></select></div>
+                    </div>
+                    <div id="conta-proj-kpis" class="kpi-grid dash-kpis"></div>
+                    <div class="card">
+                        <div class="dash-row-head"><label>Interés proyectado por mes</label><small>vs. cobrado y meta</small></div>
+                        <div class="chart-container"><canvas id="chart-conta-proj"></canvas></div>
+                    </div>
+                    <h3 class="cash-section">Mes por mes</h3>
+                    <small class="kpi-sub">Toca un mes para ver las cuotas que lo forman.</small>
+                    <div class="table-wrapper"><table><thead><tr><th>Mes</th><th style="text-align:right">Cuotas</th><th style="text-align:right">Interés proyectado</th><th style="text-align:right">Ya cobrado</th><th style="text-align:right">Por cobrar</th><th style="text-align:right">Meta</th></tr></thead><tbody id="conta-proj-list"></tbody></table></div>
+                    <h3 class="cash-section" id="conta-proj-detail-title"></h3>
+                    <div class="table-wrapper"><table id="conta-proj-detail-table" class="hidden"><thead><tr><th>Fecha</th><th>Cliente</th><th>Crédito</th><th style="text-align:right">Cuota</th><th style="text-align:right">Interés de la cuota</th><th>Estado</th></tr></thead><tbody id="conta-proj-detail"></tbody></table></div>
+                </div>
             </section>
 
             <!-- AGENDA DE COBROS (NUEVO) -->
@@ -3169,6 +3180,7 @@
             capital: 'Capital propio inicial o ajuste. Los aportes de Socios ya se cuentan automáticamente, no los repitas aquí.'
         };
         function setContaPeriod(mode, el) {
+            contaShowProjection(false);
             document.querySelectorAll('#conta-tabs .tab-item').forEach(b => b.classList.remove('active'));
             (el || document.querySelector('#conta-tabs .tab-item')).classList.add('active');
             const [from, to] = GycRules.range(mode, toDateKey(getTodayCalendar()));
@@ -3176,6 +3188,7 @@
             renderConta();
         }
         function contaCustomRange() {
+            contaShowProjection(false);
             document.querySelectorAll('#conta-tabs .tab-item').forEach((b, i) => b.classList.toggle('active', i === 3));
             renderConta();
         }
@@ -3225,9 +3238,21 @@
                 const style = e.anulado ? 'text-decoration:line-through; opacity:.55;' : '';
                 return `<tr style="${style}"><td>${escapeText(e.fecha)}</td><td>${label}</td><td>${escapeText(e.concepto)}${(e.ediciones || []).length ? `<br><small class="kpi-sub" style="text-decoration:none" title="${escapeText(contaTrail(e))}">✏️ Corregido ${e.ediciones.length} ${e.ediciones.length === 1 ? 'vez' : 'veces'} · ${escapeText(e.ediciones[e.ediciones.length - 1].motivo)}</small>` : ''}${e.anulado ? `<br><small>Anulado: ${escapeText(e.motivoAnulacion || '')}</small>` : ''}</td><td style="text-align:right; color:${sign[e.tipo] > 0 ? 'var(--primary)' : 'var(--danger)'}">${sign[e.tipo] > 0 ? '+' : '−'}${agendaFmt(e.monto)}</td><td>${escapeText(e.usuario || '')}</td><td>${e.anulado ? '' : `<div style="display:flex; gap:6px;"><button type="button" class="btn btn-sm btn-sec" onclick="editAccountingEntry('${escapeText(e.id)}')">✏️ EDITAR</button><button type="button" class="btn btn-sm btn-danger" onclick="voidAccountingEntry('${escapeText(e.id)}')">ANULAR</button></div>`}</td></tr>`;
             }).join('') || '<tr><td colspan="6">Sin movimientos en este período.</td></tr>';
-            renderContaProjection();
             renderContaCharts(r);
+            if(contaProjMode) renderContaProjection();
             applyPermissions();
+        }
+        let contaProjMode = false, contaProjChart = null, contaProjMonth = '';
+        function contaShowProjection(on) {
+            contaProjMode = on;
+            document.getElementById('conta-period-view').classList.toggle('hidden', on);
+            document.getElementById('conta-proj-view').classList.toggle('hidden', !on);
+        }
+        function setContaProjection(el) {
+            document.querySelectorAll('#conta-tabs .tab-item').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            contaShowProjection(true);
+            renderContaProjection();
         }
         function saveContaMeta() {
             if(!requireAction('accounting')) return;
@@ -3236,17 +3261,53 @@
             log('Contabilidad: meta mensual de utilidad ' + agendaFmt(db.cfg.metaUtilidad));
             save(); renderContaProjection();
         }
+        function contaProjPickMonth(m) { contaProjMonth = contaProjMonth === m ? '' : m; renderContaProjection(); }
         function renderContaProjection() {
+            if(!contaProjMode || !allowed('accounting')) return;
+            const names = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
             const metaEl = document.getElementById('conta-meta'), meta = Number((db.cfg || {}).metaUtilidad) || 0;
             if(document.activeElement !== metaEl) metaEl.value = meta > 0 ? meta : '';
-            const names = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-            const rows = GycRules.projectedInterest(db, toDateKey(getTodayCalendar()).slice(0, 7), 12);
-            const cur = rows[0], pct = meta > 0 ? Math.round(cur.scheduled / meta * 100) : null;
-            document.getElementById('conta-proj-kpi').innerHTML = `<div><small class="kpi-sub">Este mes: <b>${agendaFmt(cur.scheduled)}</b> proyectado${pct != null ? ` · ${pct}% de la meta` + (cur.scheduled < meta ? ` · faltan ${agendaFmt(meta - cur.scheduled)}` : ' · meta cubierta') : ''}</small></div>`;
+            const n = Number(document.getElementById('conta-horizon').value) || 6;
+            const rows = GycRules.projectedInterest(db, toDateKey(getTodayCalendar()).slice(0, 7), n);
+            const label = m => names[Number(m.slice(5, 7)) - 1] + ' ' + m.slice(0, 4);
+            const total = rows.reduce((t, x) => t + x.scheduled, 0), best = rows.reduce((b, x) => x.scheduled > b.scheduled ? x : b, rows[0]);
+            const cur = rows[0], covered = meta > 0 ? rows.filter(x => x.scheduled >= meta).length : null;
+            const kpi = (l, v, extra, accent) => `<div class="kpi" ${accent ? `style="--kpi-accent:${accent}"` : ''}><span>${l}</span><h3>${v}</h3>${extra ? `<small class="kpi-sub">${extra}</small>` : ''}</div>`;
+            const pct = meta > 0 ? Math.round(cur.scheduled / meta * 100) : null;
+            document.getElementById('conta-proj-kpis').innerHTML =
+                `<div class="kpi kpi-hero"><span>Utilidad proyectada de ${label(cur.month)}</span><h3>${agendaFmt(cur.scheduled)}</h3><small class="hero-sub">${meta > 0 ? pct + '% de tu meta de ' + agendaFmt(meta) + (cur.scheduled < meta ? ' · faltan ' + agendaFmt(meta - cur.scheduled) : ' · meta cubierta') : 'Escribe una meta mensual para medir tu avance'}</small></div>`
+                + kpi('Ya cobrado este mes', agendaFmt(cur.collected), 'Interés recibido', 'var(--gold)')
+                + kpi('Por cobrar este mes', agendaFmt(cur.pending), 'Interés de cuotas abiertas', 'var(--info)')
+                + kpi(`Total ${n} meses`, agendaFmt(total), 'Promedio ' + agendaFmt(total / n) + ' al mes')
+                + kpi('Mejor mes', best.scheduled > 0 ? agendaFmt(best.scheduled) : '—', best.scheduled > 0 ? label(best.month) : '', 'var(--primary)')
+                + (covered != null ? kpi('Meses con meta cubierta', covered + ' de ' + n, 'Con la cartera actual', 'var(--danger)') : '');
             document.getElementById('conta-proj-list').innerHTML = rows.map(x => {
-                const ok = meta > 0 ? x.scheduled >= meta : null;
-                return `<tr><td>${names[Number(x.month.slice(5, 7)) - 1]} ${x.month.slice(0, 4)}</td><td style="text-align:right"><b>${agendaFmt(x.scheduled)}</b><br><small class="kpi-sub">${x.installments} ${x.installments === 1 ? 'cuota' : 'cuotas'}</small></td><td style="text-align:right">${agendaFmt(x.collected)}</td><td style="text-align:right">${agendaFmt(x.pending)}</td><td style="text-align:right;color:${ok == null ? 'var(--text-muted)' : ok ? 'var(--primary)' : 'var(--danger)'}">${meta > 0 ? (ok ? '✔ cubierta' : 'faltan ' + agendaFmt(meta - x.scheduled)) : '—'}</td></tr>`;
+                const ok = meta > 0 ? x.scheduled >= meta : null, sel = x.month === contaProjMonth;
+                return `<tr onclick="contaProjPickMonth('${x.month}')" style="cursor:pointer;${sel ? 'background:var(--bg-soft, rgba(26,127,75,.08));' : ''}"><td><b>${label(x.month)}</b></td><td style="text-align:right">${x.installments}</td><td style="text-align:right"><b>${agendaFmt(x.scheduled)}</b></td><td style="text-align:right">${agendaFmt(x.collected)}</td><td style="text-align:right">${agendaFmt(x.pending)}</td><td style="text-align:right;color:${ok == null ? 'var(--text-muted)' : ok ? 'var(--primary)' : 'var(--danger)'}">${meta > 0 ? (ok ? '✔ cubierta' : 'faltan ' + agendaFmt(meta - x.scheduled)) : '—'}</td></tr>`;
             }).join('');
+            const title = document.getElementById('conta-proj-detail-title'), table = document.getElementById('conta-proj-detail-table');
+            if(contaProjMonth && rows.some(x => x.month === contaProjMonth)) {
+                const det = GycRules.projectedInterestDetail(db, contaProjMonth), cname = id => (db.cli || []).find(c => c.id === id)?.nom || 'Desconocido';
+                title.textContent = 'Cuotas de ' + label(contaProjMonth) + ' (' + det.length + ')';
+                table.classList.remove('hidden');
+                document.getElementById('conta-proj-detail').innerHTML = det.map(d => `<tr><td>${escapeText(d.date)}</td><td>${escapeText(cname(d.cliId))}</td><td>${escapeText(d.creId)} · cuota ${d.n}</td><td style="text-align:right">${agendaFmt(d.amount)}</td><td style="text-align:right"><b>${agendaFmt(d.interest)}</b></td><td>${d.done ? '✔ pagada' : 'pendiente'}</td></tr>`).join('') || '<tr><td colspan="6">Sin cuotas este mes.</td></tr>';
+            } else { title.textContent = ''; table.classList.add('hidden'); }
+            renderContaProjChart(rows, meta, label);
+        }
+        function renderContaProjChart(rows, meta, label) {
+            if(typeof Chart === 'undefined') return;
+            const cs = getComputedStyle(document.documentElement);
+            const gridCol = cs.getPropertyValue('--border').trim() || '#e4ece7', txtCol = cs.getPropertyValue('--text-main').trim() || '#10261a';
+            Chart.defaults.color = cs.getPropertyValue('--text-muted').trim() || '#6b7f72';
+            if(contaProjChart) contaProjChart.destroy();
+            const datasets = [
+                {type: 'bar', label: 'Proyectado', data: rows.map(x => x.scheduled), backgroundColor: '#1a7f4b', borderRadius: 6, maxBarThickness: 26},
+                {type: 'bar', label: 'Ya cobrado', data: rows.map(x => x.collected), backgroundColor: '#c9a54a', borderRadius: 6, maxBarThickness: 26}];
+            if(meta > 0) datasets.push({type: 'line', label: 'Meta', data: rows.map(() => meta), borderColor: '#d64545', borderDash: [6, 4], pointRadius: 0, borderWidth: 2});
+            contaProjChart = new Chart(document.getElementById('chart-conta-proj').getContext('2d'), {
+                data: {labels: rows.map(x => label(x.month)), datasets},
+                options: {maintainAspectRatio: false, responsive: true, plugins: {legend: {position: 'bottom', labels: {color: txtCol, font: {size: 11}}}, tooltip: {callbacks: {label: c => ' ' + c.dataset.label + ': ' + dashMoney(c.parsed.y)}}}, scales: {y: {beginAtZero: true, grid: {color: gridCol}}, x: {grid: {display: false}}}}
+            });
         }
         function renderContaCharts(r) {
             if(typeof Chart === 'undefined' || document.getElementById('sect-conta').classList.contains('hidden')) return;

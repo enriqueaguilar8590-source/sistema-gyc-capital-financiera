@@ -171,3 +171,7 @@ describe('projected interest by month',()=>{
   it('projects the interest part of each installment and skips test and cancelled credits',()=>{const r=rules.projectedInterest(db,'2026-10',4);expect(r.map((x:any)=>x.month)).toEqual(['2026-10','2026-11','2026-12','2027-01']);expect(r.map((x:any)=>x.scheduled)).toEqual([50,50,50,50]);});
   it('separates what is still pending from what was already collected',()=>{const r=rules.projectedInterest(db,'2026-10',2);expect([r[0].pending,r[0].collected,r[1].pending,r[1].installments]).toEqual([0,50,33.33,1]);});
 });
+describe('projected interest detail',()=>{
+  const db={cre:[{id:'C1',cliId:'K1',cap:1000,total:1200,saldo:600,schedule:[{n:2,date:'2026-11-15',amount:300,paid:100},{n:1,date:'2026-11-01',amount:300,paid:300},{n:3,date:'2026-12-01',amount:300,paid:0}]}]};
+  it('lists the installments of the month in date order with their interest part and state',()=>{const r=rules.projectedInterestDetail(db,'2026-11');expect(r.map((x:any)=>[x.n,x.date,x.interest,x.open,x.done])).toEqual([[1,'2026-11-01',50,0,true],[2,'2026-11-15',50,33.33,false]]);});
+});

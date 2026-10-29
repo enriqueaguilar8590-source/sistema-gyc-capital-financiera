@@ -314,6 +314,20 @@
         }
         return out;
     }
+    // Detalle de las cuotas que vencen en un mes: una fila por cuota con su parte de interés (para ver de dónde sale la proyección).
+    function projectedInterestDetail(db, month) {
+        const rows = [];
+        (db.cre || []).filter(c => !c.esPrueba && Number(c.saldo) > 0.005 && Number(c.total) > 0).forEach(c => {
+            const ratio = Math.max(0, (Number(c.total) - Number(c.cap)) / Number(c.total));
+            (c.schedule || []).forEach(it => {
+                const date = dateKey(it.date);
+                if(date.slice(0,7) !== month) return;
+                const amount = Number(it.amount) || 0, paid = Number(it.paid) || 0;
+                rows.push({creId:c.id, cliId:c.cliId, n:it.n, date, amount:round2(amount), interest:round2(amount*ratio), open:round2(Math.max(0, amount-paid)*ratio), done: paid + 0.005 >= amount});
+            });
+        });
+        return rows.sort((a,b) => a.date.localeCompare(b.date) || String(a.creId).localeCompare(String(b.creId)));
+    }
     // Balance as of today. Cash is estimated from recorded flows; portfolio is outstanding capital.
     function balanceSheet(db, today) {
         const entries = activeEntries(db).filter(e => e.fecha <= today);
@@ -428,5 +442,5 @@
         return id;
     }
     const contractTaken = (db, num, exceptId) => allCredits(db).some(c => c.id !== exceptId && c.contrato && String(c.contrato).toUpperCase() === String(num).toUpperCase());
-    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,projectedInterest,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,projectedInterest,projectedInterestDetail,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);
