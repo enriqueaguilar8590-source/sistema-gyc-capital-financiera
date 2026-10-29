@@ -1,4 +1,6 @@
--- PENDIENTE DE APLICAR (no está en drizzle/migrations a propósito).
+-- REFERENCIA HISTÓRICA: sustituida por drizzle/migrations/0003_protect_accounting_workspace.sql,
+-- aplicada el 29/10/2026 y verificada en nube. Protege tanto este formato como db.pd.
+-- No aplicar este disparador adicional: la protección activa es guard_accounting_workspace.
 -- Protege el libro diario en el servidor, para TODOS los roles (incluido administrador):
 --   * un asiento contabilizado no se puede cambiar ni quitar del espacio de trabajo;
 --   * la bitácora contable (auditoriaConta) solo crece;
