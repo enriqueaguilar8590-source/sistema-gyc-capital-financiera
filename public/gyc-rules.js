@@ -328,6 +328,16 @@
         });
         return rows.sort((a,b) => a.date.localeCompare(b.date) || String(a.creId).localeCompare(String(b.creId)));
     }
+    // Mes agrupado por cliente: cada cliente con sus cuotas del mes y el interés que aporta (de mayor a menor).
+    function projectedInterestByClient(db, month) {
+        const groups = {};
+        projectedInterestDetail(db, month).forEach(d => {
+            const k = d.cliId || '';
+            const g = groups[k] || (groups[k] = {cliId:d.cliId, items:[], amount:0, interest:0, open:0, done:0});
+            g.items.push(d); g.amount += d.amount; g.interest += d.interest; g.open += d.open; if(d.done) g.done++;
+        });
+        return Object.values(groups).map(g => ({...g, amount:round2(g.amount), interest:round2(g.interest), open:round2(g.open)})).sort((a,b) => b.interest - a.interest);
+    }
     // Balance as of today. Cash is estimated from recorded flows; portfolio is outstanding capital.
     function balanceSheet(db, today) {
         const entries = activeEntries(db).filter(e => e.fecha <= today);
@@ -442,5 +452,5 @@
         return id;
     }
     const contractTaken = (db, num, exceptId) => allCredits(db).some(c => c.id !== exceptId && c.contrato && String(c.contrato).toUpperCase() === String(num).toUpperCase());
-    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,projectedInterest,projectedInterestDetail,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
+    root.GycRules = {fiadorActivo,validFiador,nextContractNumber,assignContractNumber,contractTaken,montoEnLetras,plazoText,contractData,DEFAULT_RATE,validRate,toUsd,toUsdCeil,convertUsdPayment,trashDetail,purgeTrash,applyPartnerEdit,applyEntryEdit,daysBetween,clientHistory,ACC_TYPES,EXPENSE_CATEGORIES,validEntry,accountingReport,monthlyAccounting,projectedInterest,projectedInterestDetail,projectedInterestByClient,balanceSheet,smsNumber,paymentSms,reminderSms,smsLink,digestText,shouldNotify,normalize,can,canDeleteUser,dateKey,range,cashReport,addDays,dailySeries,matches,creditSearch,validContribution,partnerReport,addMonths,monthlyContributions,partnerDashboard,validContributionEdit,applyContributionEdit,PARTNER_LOCK,verifyPartnerLock};
 })(globalThis);

@@ -175,3 +175,10 @@ describe('projected interest detail',()=>{
   const db={cre:[{id:'C1',cliId:'K1',cap:1000,total:1200,saldo:600,schedule:[{n:2,date:'2026-11-15',amount:300,paid:100},{n:1,date:'2026-11-01',amount:300,paid:300},{n:3,date:'2026-12-01',amount:300,paid:0}]}]};
   it('lists the installments of the month in date order with their interest part and state',()=>{const r=rules.projectedInterestDetail(db,'2026-11');expect(r.map((x:any)=>[x.n,x.date,x.interest,x.open,x.done])).toEqual([[1,'2026-11-01',50,0,true],[2,'2026-11-15',50,33.33,false]]);});
 });
+describe('projected interest grouped by client',()=>{
+  const db={cre:[
+    {id:'C1',cliId:'K1',cap:1000,total:1200,saldo:600,schedule:[{n:1,date:'2026-11-01',amount:300,paid:300},{n:2,date:'2026-11-15',amount:300,paid:0}]},
+    {id:'C2',cliId:'K2',cap:500,total:600,saldo:600,schedule:[{n:1,date:'2026-11-10',amount:600,paid:0}]}]};
+  it('groups the month by client, biggest interest first, with their installments',()=>{const g=rules.projectedInterestByClient(db,'2026-11');expect(g.map((x:any)=>[x.cliId,x.items.length,x.amount,x.interest,x.done])).toEqual([['K1',2,600,100,1],['K2',1,600,100,0]].sort((a:any,b:any)=>b[3]-a[3]));expect(g[0].items.map((i:any)=>i.n)).toBeTruthy();});
+  it('returns nothing for a month without installments',()=>expect(rules.projectedInterestByClient(db,'2027-05')).toEqual([]));
+});
