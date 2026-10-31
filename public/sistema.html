@@ -674,7 +674,6 @@
             <button class="nav-btn" onclick="tab('sect-cre', this)"><i>💳</i><span>Créditos</span></button>
             <button class="nav-btn" onclick="tab('sect-socios', this)"><i>🤝</i><span>Socios</span></button>
             <button class="nav-btn" id="nav-conta" onclick="tab('sect-conta', this)"><i>📒</i><span>Contab.</span></button>
-            <button class="nav-btn" id="nav-pd" onclick="tab('sect-pd', this)"><i>⚖️</i><span>Partida doble</span></button>
             <button class="nav-btn" onclick="tab('sect-arqueo', this)"><i>🧮</i><span>Arqueo</span></button>
             <button class="nav-btn" onclick="tab('sect-rep', this)"><i>📑</i><span>Reportes</span></button>
             <button class="nav-btn" onclick="tab('sect-agenda', this); renderAgenda();"><i>🗓️</i><span>Agenda</span></button>
@@ -915,7 +914,6 @@
                 <div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Capital aportado</th><th>Referencia / observación</th><th>Registrado por</th><th></th></tr></thead><tbody id="contributions-list"></tbody></table></div>
             </section>
 
-            <section id="sect-pd" class="hidden"></section>
 
             <section id="sect-conta" class="hidden">
                 <div class="dash-head"><div><h2 class="cash-title" style="margin-bottom:2px">Contabilidad</h2><small>Utilidad real, movimientos y balance</small></div></div>
@@ -1357,8 +1355,6 @@
     </div>
 
     <script src="/gyc-rules.js"></script>
-    <script src="/gyc-contab.js"></script>
-    <script src="/gyc-contab-ui.js"></script>
     <script>
         // --- BASE DE DATOS E INICIALIZACIÓN ---
         let db = JSON.parse(localStorage.getItem('gyc_v10')) || {
@@ -1401,7 +1397,6 @@
             });
             document.querySelectorAll('#adj-user input,#adj-user select,#adj-emp input,#adj-emp textarea,#adj-db input:not([type=file])').forEach(el=>el.disabled=!allowed('edit'));
             document.getElementById('nav-conta')?.classList.toggle('hidden', !allowed('accounting'));
-            document.getElementById('nav-pd')?.classList.toggle('hidden', !allowed('accounting'));
             document.querySelectorAll('#partner-form input,#contribution-form input,#contribution-form select,[data-partner-write]').forEach(el=>el.disabled=!allowed('partners'));
             document.getElementById('cre-refi').disabled = !allowed('edit');
             if(!allowed('edit')) document.getElementById('cre-refi').value = '';
@@ -1876,7 +1871,6 @@
             if(id === 'sect-cre') renderCre();
             if(id === 'sect-socios') renderPartners();
             if(id === 'sect-conta') { if(!allowed('accounting')) { alert('Solo el administrador puede ver la contabilidad.'); return tab('sect-dash', document.querySelector('.nav-btn')); } if(!document.getElementById('conta-from').value) setContaPeriod('mes'); else renderConta(); }
-            if(id === 'sect-pd') { if(!allowed('accounting')) { alert('Solo el administrador puede ver la contabilidad.'); return tab('sect-dash', document.querySelector('.nav-btn')); } renderPd(); }
             if(id === 'sect-hist') renderHist();
             if(id === 'sect-rep') renderReport(currentReport, currentReportEl || document.querySelector('#sect-rep .tab-item'));
             if(id === 'sect-dash') renderDash();
@@ -2002,7 +1996,6 @@
 
         function openCreModal(id = null) {
             if(!requireAction(id ? 'edit' : 'createCredit')) return;
-            if(id && db.pd && window.GycContab && GycContab.operacionBloqueada(db.pd, 'cre', id)) return alert('Este crédito ya tiene asientos contables y no se puede editar. Reversa primero sus asientos en Partida doble → Diario.');
             const sel = document.getElementById('cre-cli-sel');
             sel.innerHTML = db.cli.map(c => `<option value="${c.id}">${c.nom}</option>`).join('') || '<option disabled>Primero cree un cliente</option>';
             document.getElementById('cre-edit-id').value = id || '';
@@ -2803,7 +2796,6 @@
         // --- PAPELERA ---
         function moveToTrash(type, id) {
             if(!requireAction('edit')) return;
-            if(type === 'cre' && db.pd && window.GycContab && GycContab.operacionBloqueada(db.pd, 'cre', id)) return alert('Este crédito ya tiene asientos contables. Reversa primero sus asientos en Partida doble → Diario.');
             if(!confirm("¿Está seguro de mover este registro a la papelera?")) return;
             let list = type === 'cli' ? db.cli : db.cre;
             if(type === 'cli') {

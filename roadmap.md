@@ -7,5 +7,5 @@
 - [x] Eliminar usuarios inhabilitados conservando cobros e historial (reglas y comprobación previa).
 - [x] Arqueo de recuperado por día, semana, mes y rango, por cobrador.
 - [x] Pruebas: 111 correctas; protección contable y aporte comprobados en nube sin conservar datos de prueba.
-- [ ] Aprobar apertura contable y política de intereses: requiere saldos reales conciliados y validación del contador.
+- [x] Partida doble retirada del sistema por decisión del dueño; la contabilidad queda en el apartado Contabilidad (con pestaña PROYECCIÓN).
 - [ ] Verificar cobros simultáneos reales en dos dispositivos: requiere operaciones reales autorizadas, no cobros ficticios sobre la cartera.
