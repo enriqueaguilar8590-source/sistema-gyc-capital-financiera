@@ -84,7 +84,9 @@ export function buildCsp(host: string, https: boolean): string {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
     `connect-src ${connect.join(" ")}`,
-    "frame-src 'self'",
+    // sistema.html runs in a same-origin iframe and opens the SMS app with `location.href = "sms:..."`;
+    // Chrome checks that navigation against frame-src, so sms: must be listed or the SMS after a payment fails.
+    "frame-src 'self' sms:",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",

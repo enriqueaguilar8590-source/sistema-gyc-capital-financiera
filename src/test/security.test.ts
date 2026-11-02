@@ -44,6 +44,7 @@ describe('security headers', () => {
     expect(preview['Content-Security-Policy']).toContain('frame-ancestors \'self\' https://lovable.dev');
     expect(buildCsp('one-system-anywhere.lovable.app', true)).not.toContain('lovable.dev https://*.lovable.dev https://gptengineer');
   });
+  it('lets the embedded system open the SMS app (sms: links from the iframe)', () => expect(securityHeaders(req(PROD + '/'))['Content-Security-Policy']).toContain("frame-src 'self' sms:"));
   it('skips HSTS over plain http (local dev)', () => expect(securityHeaders(req('http://localhost:3000/'))['Strict-Transport-Security']).toBeUndefined());
   it('adds the headers to the app response without changing its body', async () => {
     const r = secureResponse(req(PROD + '/'), new Response('hola', { status: 200, headers: { 'content-type': 'text/html' } }));
